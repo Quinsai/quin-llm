@@ -1,0 +1,34 @@
+# Instruction tuning on Alpaca, starting from the pretrain checkpoint.
+data:
+  tokenizer_path: processed_data/tokenizer/tokenizer.pkl
+  out_dir: processed_data/sft
+  val_fraction: 0.02
+  seed: 42
+  replay_prob: 0.05
+  pretrain_dir: processed_data/pretrain
+  source:
+    type: hf
+    dataset: tatsu-lab/alpaca
+    split: train
+
+train:
+  out_dir: checkpoints/sft_full
+  batch_size: 32
+  grad_accum_steps: 1
+  lr: 0.0001
+  min_lr: 0.00001
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  warmup_steps: 100
+  max_steps: null
+  epochs: 2
+  eval_interval: 100
+  eval_batches: 50
+  save_interval: 500
+  log_interval: 20
+  amp: true
+  num_workers: 4
+  seed: 42
+  draw: true

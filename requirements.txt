@@ -1,0 +1,20 @@
+# Core runtime dependencies for quin-llm.
+#
+# Local CPU install:
+#   pip install -r requirements.txt \
+#       --index-url https://download.pytorch.org/whl/cpu \
+#       --extra-index-url https://pypi.org/simple
+#
+# V100 / CUDA install (PyPI's default torch wheel is CUDA 12.x):
+#   pip install -r requirements.txt
+# or explicitly:
+#   pip install -r requirements.txt \
+#       --index-url https://download.pytorch.org/whl/cu124 \
+#       --extra-index-url https://pypi.org/simple
+
+torch==2.6.0
+numpy==2.2.6
+datasets==3.6.0
+matplotlib==3.10.0
+pyyaml==6.0.2
+tqdm==4.67.1

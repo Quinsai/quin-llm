@@ -1,0 +1,52 @@
+# ~14M parameter decoder, intended for a V100 32GB.
+model:
+  vocab_size: 8192
+  block_size: 512
+  n_layer: 6
+  n_embd: 384
+  n_head: 6
+  dropout: 0.1
+  tie_weights: true
+  use_sdpa: true
+
+data:
+  tokenizer_path: processed_data/tokenizer/tokenizer.pkl
+  out_dir: processed_data/pretrain
+  max_tokens: 300000000
+  val_fraction: 0.01
+  seed: 42
+  sources:
+    - type: hf
+      dataset: roneneldan/TinyStories
+      config: null
+      split: train
+      text_field: text
+      weight: 0.60
+    - type: hf
+      dataset: Salesforce/wikitext
+      config: wikitext-103-raw-v1
+      split: train
+      text_field: text
+      weight: 0.40
+
+train:
+  out_dir: checkpoints/pretrain_full
+  batch_size: 64
+  grad_accum_steps: 1
+  lr: 0.0006
+  min_lr: 0.00006
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  warmup_steps: 500
+  max_steps: 12000
+  epochs: null
+  eval_interval: 250
+  eval_batches: 50
+  save_interval: 1000
+  log_interval: 20
+  amp: true
+  num_workers: 4
+  seed: 42
+  draw: true

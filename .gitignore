@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Generated data and checkpoints
+processed_data/
+checkpoints/
+legacy/
+*.pt
+*.bin
+*.pkl
+
+# Generated plots (keep source assets if added later)
+*.png
+
+.idea/
+.vscode/
+.DS_Store

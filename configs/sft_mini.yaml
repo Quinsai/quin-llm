@@ -1,0 +1,33 @@
+# CPU-only mini SFT smoke configuration.
+data:
+  tokenizer_path: processed_data/tokenizer_mini/tokenizer.pkl
+  out_dir: processed_data/sft_mini
+  val_fraction: 0.1
+  seed: 42
+  replay_prob: 0.0
+  block_size: 128
+  source:
+    type: file
+    path: data_pipeline/tiny_sft_message.txt
+
+train:
+  out_dir: checkpoints/sft_mini
+  batch_size: 8
+  grad_accum_steps: 1
+  lr: 0.0005
+  min_lr: 0.00005
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  warmup_steps: 10
+  max_steps: 60
+  epochs: null
+  eval_interval: 20
+  eval_batches: 5
+  save_interval: 30
+  log_interval: 5
+  amp: false
+  num_workers: 0
+  seed: 42
+  draw: true

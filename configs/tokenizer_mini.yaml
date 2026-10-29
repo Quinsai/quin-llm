@@ -1,0 +1,13 @@
+# Tiny tokenizer for local CPU (mini) smoke tests.
+out_path: processed_data/tokenizer_mini/tokenizer.pkl
+vocab_size: 1024
+min_freq: 1
+max_words: 50000
+max_chars: 500000
+sources:
+  - type: file
+    path: data_pipeline/tiny_corpus.txt
+    weight: 1.0
+  - type: file
+    path: data_pipeline/tiny_sft_message.txt
+    weight: 0.5

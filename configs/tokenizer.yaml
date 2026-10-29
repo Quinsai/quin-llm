@@ -1,0 +1,23 @@
+# Byte-level BPE tokenizer for the full experiment.
+out_path: processed_data/tokenizer/tokenizer.pkl
+vocab_size: 8192
+min_freq: 2
+max_words: 200000
+max_chars: 100000000
+sources:
+  - type: hf
+    dataset: roneneldan/TinyStories
+    config: null
+    split: train
+    text_field: text
+    weight: 0.55
+  - type: hf
+    dataset: Salesforce/wikitext
+    config: wikitext-103-raw-v1
+    split: train
+    text_field: text
+    weight: 0.35
+  - type: alpaca
+    dataset: tatsu-lab/alpaca
+    split: train
+    weight: 0.10
