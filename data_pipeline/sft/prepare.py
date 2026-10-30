@@ -21,7 +21,11 @@ def _fit_to_block_size(
     eos_id: int,
     min_prompt_tokens: int = 16,
 ) -> tuple[list[int], list[int]]:
-    """Truncate a sample while keeping the answer (and at least part of prompt)."""
+    """Truncate a sample while keeping the answer (and at least part of prompt).
+
+    The returned arrays may contain ``block_size`` tokens.  The caller stores
+    one extra token so the dataset can produce shifted next-token targets.
+    """
     if len(prompt_ids) + len(answer_ids) <= block_size:
         return prompt_ids + answer_ids, [-100] * len(prompt_ids) + list(answer_ids)
 
@@ -59,6 +63,11 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
     pad_id = tokenizer.pad_id
     eos_id = tokenizer.eos_id
 
+    # Store one extra token per sample.  The training model consumes
+    # ``block_size`` inputs and predicts the next token, so ``SFTDataset``
+    # returns ``input_ids[:-1]`` and ``labels[1:]``.
+    stored_len = int(block_size) + 1
+
     samples: list[tuple[np.ndarray, np.ndarray]] = []
     skipped = 0
     answer_lengths: list[int] = []
@@ -70,12 +79,12 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
         if not answer_ids:
             skipped += 1
             continue
-        ids, labels = _fit_to_block_size(prompt_ids, answer_ids, block_size, eos_id)
-        if len(ids) > block_size:
+        ids, labels = _fit_to_block_size(prompt_ids, answer_ids, stored_len, eos_id)
+        if len(ids) > stored_len:
             # Should not happen, but never write malformed samples.
             skipped += 1
             continue
-        pad = block_size - len(ids)
+        pad = stored_len - len(ids)
         ids = ids + [pad_id] * pad
         labels = labels + [-100] * pad
         samples.append(
@@ -105,8 +114,8 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
 
     train = pack(train_samples)
     val = pack(val_samples) if val_samples else {
-        "input_ids": torch.empty(0, block_size, dtype=torch.int32),
-        "labels": torch.empty(0, block_size, dtype=torch.int32),
+        "input_ids": torch.empty(0, stored_len, dtype=torch.int32),
+        "labels": torch.empty(0, stored_len, dtype=torch.int32),
     }
     torch.save(train, out_dir / "train.pt")
     torch.save(val, out_dir / "val.pt")

@@ -6,6 +6,7 @@ import numpy as np
 import torch
 
 from data_pipeline.pretrain.dataset import PretrainDataset
+from data_pipeline.sft.dataset import SFTDataset
 from data_pipeline.sft.prepare import prepare_sft
 from data_pipeline.sources import parse_sft_file
 from data_pipeline.tokenizer.bpe_tokenizer import BPETokenizer
@@ -82,18 +83,32 @@ class TestDatasets(unittest.TestCase):
             prepare_sft(cfg, self.tokenizer, block_size=32)
             data = torch.load(tmp / "out" / "train.pt", weights_only=False)
             input_ids, labels = data["input_ids"], data["labels"]
-            self.assertEqual(tuple(input_ids.shape), (1, 32))
-            self.assertEqual(tuple(labels.shape), (1, 32))
+            # One extra token is stored so the dataset can shift without loss.
+            self.assertEqual(tuple(input_ids.shape), (1, 33))
+            self.assertEqual(tuple(labels.shape), (1, 33))
 
             # Prompt tokens must be masked; at least one answer token must remain.
             masked = labels[0] == -100
             self.assertGreater(int(masked.sum()), 0)
-            self.assertLess(int(masked.sum()), 32)
+            self.assertLess(int(masked.sum()), 33)
             self.assertTrue((input_ids[0][masked] >= 0).all())
 
             # Padding uses the pad id, and its labels are ignored.
             pad_positions = input_ids[0] == self.tokenizer.pad_id
             self.assertTrue(bool((labels[0][pad_positions] == -100).all()))
+
+            # The dataset must return next-token targets of length block_size.
+            x, y = SFTDataset(tmp / "out" / "train.pt")[0]
+            self.assertEqual(tuple(x.shape), (32,))
+            self.assertEqual(tuple(y.shape), (32,))
+            self.assertTrue(torch.equal(x, input_ids[0][:-1].long()))
+            self.assertTrue(torch.equal(y, labels[0][1:].long()))
+
+            # The target immediately after the prompt is the first answer
+            # token, not the answer token aligned with the same input position.
+            first_answer = int(torch.nonzero(labels[0] != -100)[0])
+            self.assertGreater(first_answer, 0)
+            self.assertEqual(int(y[first_answer - 1]), int(input_ids[0][first_answer]))
 
 
 if __name__ == "__main__":

@@ -22,7 +22,13 @@ class SFTDataset(Dataset):
         return self.input_ids.size(0)
 
     def __getitem__(self, index: int):
-        return self.input_ids[index].long(), self.labels[index].long()
+        # ``TinyModel.forward`` performs an unshifted cross-entropy on (x, y),
+        # so the target at position i must be the token at input position i+1.
+        # The prepared files store one extra token to make the shift lossless:
+        # x has exactly block_size tokens and y[i] == labels[i + 1].
+        input_ids = self.input_ids[index].long()
+        labels = self.labels[index].long()
+        return input_ids[:-1], labels[1:]
 
 
 class ReplayDataset(Dataset):
