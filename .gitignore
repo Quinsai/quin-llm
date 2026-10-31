@@ -9,6 +9,7 @@ venv/
 processed_data/
 checkpoints/
 legacy/
+log/
 *.pt
 *.bin
 *.pkl

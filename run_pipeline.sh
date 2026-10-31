@@ -2,11 +2,12 @@
 # Run quin-llm stages in the inclusive range [start, end].
 #
 # Usage:
-#   ./run_pipeline.sh [--start STAGE] [--end STAGE] [--mode full|mini]
+#   ./run_pipeline.sh [--start STAGE] [--end STAGE] [--mode full|mini] [--save-log true|false]
 #
 # start default: pretrain
 # end default:   sft
 # mode default:  full
+# save-log default: true
 #
 # Stage order:
 #   tokenize | prepare-pretrain | pretrain | prepare-sft | sft
@@ -16,13 +17,14 @@
 #   ./run_pipeline.sh --start tokenize
 #   ./run_pipeline.sh --start prepare-pretrain --end pretrain
 #   ./run_pipeline.sh --start tokenize --end pretrain --mode mini
+#   ./run_pipeline.sh --save-log false
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
 usage() {
     cat <<'EOF'
-Usage: ./run_pipeline.sh [--start STAGE] [--end STAGE] [--mode full|mini]
+Usage: ./run_pipeline.sh [--start STAGE] [--end STAGE] [--mode full|mini] [--save-log true|false]
 
 start (default: pretrain):
   tokenize           train the BPE tokenizer
@@ -38,6 +40,10 @@ mode (default: full):
   full               GPU/full configs
   mini               CPU-only smoke configs
 
+save-log (default: true):
+  true               write stdout/stderr to log/pipeline_*.log
+  false              do not write a log file
+
 The script runs every stage from start through end, inclusive.
 
 Examples:
@@ -45,12 +51,25 @@ Examples:
   ./run_pipeline.sh --start tokenize
   ./run_pipeline.sh --start prepare-pretrain --end pretrain
   ./run_pipeline.sh --start tokenize --end pretrain --mode mini
+  ./run_pipeline.sh --save-log false
 EOF
+}
+
+set_save_log() {
+    case "${1,,}" in
+        true|1|yes|on) SAVE_LOG=1 ;;
+        false|0|no|off) SAVE_LOG=0 ;;
+        *)
+            echo "error: invalid --save-log value '$1' (expected true or false)" >&2
+            exit 2
+            ;;
+    esac
 }
 
 START_PHASE="pretrain"
 END_PHASE="sft"
 MODE="full"
+SAVE_LOG=1
 
 while (($#)); do
     case "$1" in
@@ -92,6 +111,18 @@ while (($#)); do
             ;;
         --mode=*)
             MODE="${1#*=}"
+            shift
+            ;;
+        --save-log)
+            if (($# < 2)); then
+                echo "error: --save-log requires a value (true or false)" >&2
+                exit 2
+            fi
+            set_save_log "$2"
+            shift 2
+            ;;
+        --save-log=*)
+            set_save_log "${1#*=}"
             shift
             ;;
         -*)
@@ -162,6 +193,17 @@ fi
 if ((START_INDEX > END_INDEX)); then
     echo "error: start stage '$START_PHASE' comes after end stage '$END_PHASE'" >&2
     exit 2
+fi
+
+LOG_DIR="${LOG_DIR:-log}"
+if ((SAVE_LOG)); then
+    mkdir -p "$LOG_DIR"
+    LOG_FILE="$LOG_DIR/pipeline_${MODE}_$(date +%Y%m%d_%H%M%S).log"
+    exec > >(tee "$LOG_FILE") 2>&1
+    export PYTHONUNBUFFERED=1
+    echo "log: $LOG_FILE"
+else
+    echo "log: disabled"
 fi
 
 require_pretrain_ckpt() {

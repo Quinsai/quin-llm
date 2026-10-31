@@ -83,7 +83,7 @@ python scripts/gpu_smoke.py
 ### run_pipeline.sh
 
 ```bash
-./run_pipeline.sh [--start STAGE] [--end STAGE] [--mode full|mini]
+./run_pipeline.sh [--start STAGE] [--end STAGE] [--mode full|mini] [--save-log true|false]
 ```
 
 - `start` 可选：`tokenize`、`prepare-pretrain`、`pretrain`、`prepare-sft`、`sft`
@@ -92,6 +92,7 @@ python scripts/gpu_smoke.py
 - `start` 默认是 `pretrain`
 - `end` 默认是 `sft`
 - `mode` 可选：`full`（默认，V100 完整配置）或 `mini`（纯 CPU 冒烟配置）
+- `save-log` 可选：`true`（默认，输出同时写入 `log/pipeline_*.log`）或 `false`
 
 示例：
 
@@ -101,6 +102,7 @@ python scripts/gpu_smoke.py
 ./run_pipeline.sh --start prepare-pretrain --end pretrain # full：只跑这两个阶段
 ./run_pipeline.sh --start tokenize --end pretrain --mode mini
 ./run_pipeline.sh --start prepare-sft --mode mini         # mini：prepare-sft -> sft
+./run_pipeline.sh --save-log false                        # 不写日志文件
 ```
 
 默认从 `pretrain` 开始时，前提是 tokenizer 和预训练数据已经准备好；如果需要从头生成，请显式传入 `--start tokenize`。
@@ -110,9 +112,12 @@ python scripts/gpu_smoke.py
 ```bash
 ./run_chat.sh                      # full 的 SFT checkpoint
 ./run_chat.sh --mode mini          # CPU 冒烟模型
+./run_chat.sh --save-log false     # 不写日志文件
 CKPT=checkpoints/sft_full/final.pt ./run_chat.sh
 ./run_chat.sh --temperature 0.7 --max-new-tokens 300
 ```
+
+`run_chat.sh` 默认把终端输出同时写入 `log/chat_*.log`，`run_pipeline.sh` 默认写入 `log/pipeline_*.log`；传 `--save-log false` 可以关闭。
 
 ### 配置文件的分工
 
@@ -225,6 +230,7 @@ processed_data/         运行后生成的数据产物（可重新生成）
   pretrain_mini/        mini train.bin / val.bin
   sft_mini/             mini train.pt / val.pt
 checkpoints/            模型权重
+log/                    运行日志（两个 shell 脚本默认写入）
 legacy/                 旧版本文件（不参与训练）
 model/
   model.py              TinyModel
