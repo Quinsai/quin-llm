@@ -49,7 +49,8 @@ class Trainer:
         self.tokenizer_path = str(tokenizer_path or "")
         self.out_dir = Path(cfg.out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
-        self.history: list[dict] = []
+        self.train_history: list[dict] = []
+        self.val_history: list[dict] = []
 
         print(
             f"trainer: device={self.device}, amp={self.use_amp}, "
@@ -256,6 +257,9 @@ class Trainer:
                             lr=lr,
                             tokens_per_sec=tokens_per_sec,
                         )
+                        self.train_history.append(
+                            {"step": step, "loss": train_loss}
+                        )
 
                     if (
                         val_loader is not None
@@ -271,8 +275,8 @@ class Trainer:
                             lr=lr,
                             tokens_per_sec=tokens_per_sec,
                         )
-                        self.history.append(
-                            {"step": step, "train_loss": train_loss, "val_loss": val_loss}
+                        self.val_history.append(
+                            {"step": step, "val_loss": val_loss}
                         )
                         if val_loss < best_val:
                             best_val = val_loss
@@ -295,11 +299,12 @@ class Trainer:
         if not best_path.exists():
             self.save_checkpoint(best_path, step, final_val)
 
-        if self.cfg.draw and self.history:
+        if self.cfg.draw and (self.train_history or self.val_history):
             draw_curves(
-                [h["train_loss"] for h in self.history],
-                [h["val_loss"] for h in self.history],
-                x=[h["step"] for h in self.history],
+                [h["loss"] for h in self.train_history],
+                [h["val_loss"] for h in self.val_history],
+                x=[h["step"] for h in self.train_history],
+                val_x=[h["step"] for h in self.val_history],
                 label_x="step",
                 label_y="loss",
                 title=f"{tag}_loss",

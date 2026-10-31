@@ -36,23 +36,34 @@ def draw_curves(
     train_values,
     val_values,
     x=None,
+    val_x=None,
     label_x: str = "step",
     label_y: str = "loss",
     title: str = "loss",
     img_path: str | Path = "",
 ):
-    """Save train/validation curves on one figure."""
+    """Save train/validation curves on one figure.
+
+    ``x`` and ``val_x`` may have different lengths, so train and validation
+    points can be recorded at their own logging intervals.
+    """
     out_dir = Path(img_path) if img_path else Path(".")
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{title}.png"
 
     plt.figure()
-    if x is None:
-        plt.plot(train_values, color="blue", label="train")
-        plt.plot(val_values, color="orange", label="val")
-    else:
-        plt.plot(x, train_values, color="blue", label="train")
-        plt.plot(x, val_values, color="orange", label="val")
+    if train_values:
+        if x is None:
+            plt.plot(train_values, color="blue", label="train")
+        else:
+            plt.plot(x, train_values, color="blue", label="train")
+    if val_values:
+        if val_x is None:
+            val_x = x
+        if val_x is None:
+            plt.plot(val_values, color="orange", label="val")
+        else:
+            plt.plot(val_x, val_values, color="orange", label="val")
     plt.xlabel(label_x)
     plt.ylabel(label_y)
     plt.title(title)
