@@ -199,7 +199,7 @@ class Trainer:
 
         logger = CSVLogger(
             self.out_dir / f"{tag}_log.csv",
-            ["step", "loss", "val_loss", "lr", "tokens_per_sec"],
+            ["step", "train_loss", "val_loss", "lr", "tokens_per_sec"],
         )
         pbar = tqdm(
             total=max_steps,
@@ -238,7 +238,7 @@ class Trainer:
                     elapsed = max(1e-9, time.time() - start_time)
                     tokens_per_sec = tokens_seen / elapsed
                     pbar.set_postfix(
-                        loss=f"{train_loss:.4f}",
+                        train_loss=f"{train_loss:.4f}",
                         lr=f"{lr:.1e}",
                         tok_s=f"{tokens_per_sec:,.0f}",
                     )
@@ -246,12 +246,12 @@ class Trainer:
                     if step == 1 or step % self.cfg.log_interval == 0:
                         pbar.write(
                             f"[{tag}] step {step}/{max_steps} "
-                            f"loss {train_loss:.4f} lr {lr:.2e} "
+                            f"train_loss {train_loss:.4f} lr {lr:.2e} "
                             f"{tokens_per_sec:,.0f} tok/s"
                         )
                         logger.log(
                             step=step,
-                            loss=train_loss,
+                            train_loss=train_loss,
                             val_loss="",
                             lr=lr,
                             tokens_per_sec=tokens_per_sec,
@@ -266,7 +266,7 @@ class Trainer:
                         pbar.write(f"[{tag}] step {step} val_loss {val_loss:.4f}")
                         logger.log(
                             step=step,
-                            loss=train_loss,
+                            train_loss=train_loss,
                             val_loss=val_loss,
                             lr=lr,
                             tokens_per_sec=tokens_per_sec,
