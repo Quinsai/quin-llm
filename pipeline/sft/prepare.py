@@ -15,42 +15,6 @@ from pipeline.sources import iter_sft_examples, parse_sft_file
 PROMPT_TEMPLATE = "###User:\n{user}\n###Agent:\n"
 
 
-def _fit_to_block_size(
-    prompt_ids: list[int],
-    answer_ids: list[int],
-    block_size: int,
-    eos_id: int,
-    min_prompt_tokens: int = 16,
-) -> tuple[list[int], list[int]]:
-    """Truncate a sample while keeping the answer (and at least part of prompt).
-
-    The returned arrays may contain ``block_size`` tokens.  The caller stores
-    one extra token so the dataset can produce shifted next-token targets.
-    """
-    if len(prompt_ids) + len(answer_ids) <= block_size:
-        return prompt_ids + answer_ids, [-100] * len(prompt_ids) + list(answer_ids)
-
-    min_prompt = min(len(prompt_ids), min_prompt_tokens)
-    max_answer = max(1, block_size - min_prompt)
-    if len(answer_ids) > max_answer:
-        answer_ids = list(answer_ids[:max_answer])
-        answer_ids[-1] = eos_id
-
-    keep_prompt = block_size - len(answer_ids)
-    if keep_prompt <= 0:
-        prompt_ids = []
-    elif len(prompt_ids) > keep_prompt:
-        if keep_prompt == 1:
-            prompt_ids = prompt_ids[:1]
-        else:
-            # Preserve BOS / the first prompt token, drop from the left.
-            prompt_ids = prompt_ids[:1] + prompt_ids[-(keep_prompt - 1) :]
-
-    ids = prompt_ids + answer_ids
-    labels = [-100] * len(prompt_ids) + list(answer_ids)
-    return ids, labels
-
-
 def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
     out_dir = Path(cfg["out_dir"])
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -62,7 +26,6 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
     val_fraction = float(cfg.get("val_fraction", 0.02))
     seed = int(cfg.get("seed", 42))
     pad_id = tokenizer.pad_id
-    eos_id = tokenizer.eos_id
 
     # Store one extra token per sample.  The training model consumes
     # ``block_size`` inputs and predicts the next token, so ``SFTDataset``
@@ -73,6 +36,7 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
 
     samples: list[tuple[np.ndarray, np.ndarray]] = []
     skipped = 0
+    overlong = 0
     answer_lengths: list[int] = []
 
     total_examples = source.get("num_examples") or source.get("total")
@@ -90,16 +54,20 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
             prompt = PROMPT_TEMPLATE.format(user=user)
             prompt_ids = tokenizer.encode(prompt, add_bos=True, add_eos=False)
             answer_ids = tokenizer.encode(answer, add_bos=False, add_eos=True)
-            if not answer_ids:
+            if len(answer_ids) <= 1:
+                # Only EOS: the source produced an empty answer.
                 skipped += 1
-                pbar.set_postfix(kept=len(samples), skipped=skipped)
+                pbar.set_postfix(kept=len(samples), skipped=skipped, overlong=overlong)
                 continue
-            ids, labels = _fit_to_block_size(prompt_ids, answer_ids, stored_len, eos_id)
-            if len(ids) > stored_len:
-                # Should not happen, but never write malformed samples.
+            if len(prompt_ids) + len(answer_ids) > stored_len:
+                # Truncation would either drop the instruction or cut the
+                # answer mid-sentence and force a premature EOS.  Skip instead.
                 skipped += 1
-                pbar.set_postfix(kept=len(samples), skipped=skipped)
+                overlong += 1
+                pbar.set_postfix(kept=len(samples), skipped=skipped, overlong=overlong)
                 continue
+            ids = prompt_ids + answer_ids
+            labels = [-100] * len(prompt_ids) + answer_ids
             pad = stored_len - len(ids)
             ids = ids + [pad_id] * pad
             labels = labels + [-100] * pad
@@ -110,7 +78,7 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
                 )
             )
             answer_lengths.append(sum(1 for x in labels if x != -100))
-            pbar.set_postfix(kept=len(samples), skipped=skipped)
+            pbar.set_postfix(kept=len(samples), skipped=skipped, overlong=overlong)
 
     if not samples:
         raise ValueError("no SFT samples were produced")
@@ -144,6 +112,7 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
         "train_samples": len(train_samples),
         "val_samples": len(val_samples),
         "skipped": skipped,
+        "overlong_samples": overlong,
         "avg_answer_tokens": float(np.mean(answer_lengths)),
         "max_answer_tokens": int(np.max(answer_lengths)),
         "source": source,
@@ -152,6 +121,7 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
         json.dump(meta, f, indent=2, ensure_ascii=False)
     print(
         f"SFT data ready: train={len(train_samples):,}, val={len(val_samples):,}, "
-        f"skipped={skipped:,}, avg_answer_tokens={meta['avg_answer_tokens']:.1f}"
+        f"skipped={skipped:,} (overlong={overlong:,}), "
+        f"avg_answer_tokens={meta['avg_answer_tokens']:.1f}"
     )
     return meta

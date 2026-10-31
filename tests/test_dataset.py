@@ -80,29 +80,33 @@ class TestDatasets(unittest.TestCase):
                 "seed": 0,
                 "source": {"type": "file", "path": str(source)},
             }
-            prepare_sft(cfg, self.tokenizer, block_size=32)
+            prepare_sft(cfg, self.tokenizer, block_size=64)
             data = torch.load(tmp / "out" / "train.pt", weights_only=False)
             input_ids, labels = data["input_ids"], data["labels"]
             # One extra token is stored so the dataset can shift without loss.
-            self.assertEqual(tuple(input_ids.shape), (1, 33))
-            self.assertEqual(tuple(labels.shape), (1, 33))
+            self.assertEqual(tuple(input_ids.shape), (1, 65))
+            self.assertEqual(tuple(labels.shape), (1, 65))
 
             # Prompt tokens must be masked; at least one answer token must remain.
             masked = labels[0] == -100
             self.assertGreater(int(masked.sum()), 0)
-            self.assertLess(int(masked.sum()), 33)
+            self.assertLess(int(masked.sum()), 65)
             self.assertTrue((input_ids[0][masked] >= 0).all())
 
             # Padding uses the pad id, and its labels are ignored.
             pad_positions = input_ids[0] == self.tokenizer.pad_id
+            self.assertTrue(bool(pad_positions.any()))
             self.assertTrue(bool((labels[0][pad_positions] == -100).all()))
 
-            # The dataset returns next-token targets, at most block_size long.
+            # The dataset trims padding and returns next-token targets that are
+            # at most block_size tokens long.
+            valid_len = int(torch.nonzero(labels[0] != -100)[-1]) + 1
+            self.assertLess(valid_len, 65)
             x, y = SFTDataset(tmp / "out" / "train.pt")[0]
-            self.assertEqual(tuple(x.shape), (32,))
-            self.assertEqual(tuple(y.shape), (32,))
-            self.assertTrue(torch.equal(x, input_ids[0][:-1].long()))
-            self.assertTrue(torch.equal(y, labels[0][1:].long()))
+            self.assertEqual(x.size(0), valid_len - 1)
+            self.assertEqual(y.size(0), valid_len - 1)
+            self.assertTrue(torch.equal(x, input_ids[0][: valid_len - 1].long()))
+            self.assertTrue(torch.equal(y, labels[0][1:valid_len].long()))
 
             # The target immediately after the prompt is the first answer
             # token, not the answer token aligned with the same input position.
@@ -110,18 +114,30 @@ class TestDatasets(unittest.TestCase):
             self.assertGreater(first_answer, 0)
             self.assertEqual(int(y[first_answer - 1]), int(input_ids[0][first_answer]))
 
-            # With a larger stored width the dataset trims padding instead of
-            # always returning block_size tokens.
-            short_cfg = dict(cfg)
-            short_cfg["out_dir"] = str(tmp / "short")
-            prepare_sft(short_cfg, self.tokenizer, block_size=64)
-            short_data = torch.load(tmp / "short" / "train.pt", weights_only=False)
-            short_labels = short_data["labels"][0]
-            valid_len = int(torch.nonzero(short_labels != -100)[-1]) + 1
-            short_x, short_y = SFTDataset(tmp / "short" / "train.pt")[0]
-            self.assertEqual(short_x.size(0), valid_len - 1)
-            self.assertEqual(short_y.size(0), valid_len - 1)
-            self.assertLess(short_x.size(0), 64)
+    def test_sft_skips_overlong_samples(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            source = tmp / "sft.txt"
+            source.write_text(
+                "###User:\nWhat is a cat?\n###Agent:\nA small animal.\n\n"
+                "###User:\nTell me a long story.\n###Agent:\n"
+                + ("word " * 500)
+                + "\n\n",
+                encoding="utf-8",
+            )
+            cfg = {
+                "out_dir": str(tmp / "out"),
+                "tokenizer_path": "",
+                "val_fraction": 0.0,
+                "seed": 0,
+                "source": {"type": "file", "path": str(source)},
+            }
+            meta = prepare_sft(cfg, self.tokenizer, block_size=64)
+            self.assertEqual(meta["train_samples"], 1)
+            self.assertEqual(meta["skipped"], 1)
+            self.assertEqual(meta["overlong_samples"], 1)
+            data = torch.load(tmp / "out" / "train.pt", weights_only=False)
+            self.assertEqual(data["input_ids"].shape[0], 1)
 
 
 if __name__ == "__main__":
