@@ -42,7 +42,7 @@ pip install -r requirements.txt \
 一键从 tokenize 跑到 sft：
 
 ```bash
-./run_pipeline.sh tokenize mini
+./run_pipeline.sh --start tokenize --mode mini
 ```
 
 或者分步执行：
@@ -83,25 +83,27 @@ python scripts/gpu_smoke.py
 ### run_pipeline.sh
 
 ```bash
-./run_pipeline.sh [phase] [mode]
+./run_pipeline.sh [--start STAGE] [--end STAGE] [--mode full|mini]
 ```
 
-- `phase` 可选：`tokenize`、`prepare-pretrain`、`pretrain`、`prepare-sft`、`sft`
-- 从 `phase` 开始，按顺序执行到 `sft` 结束
-- `phase` 默认是 `pretrain`
+- `start` 可选：`tokenize`、`prepare-pretrain`、`pretrain`、`prepare-sft`、`sft`
+- `end` 可选：同上
+- 执行闭区间 `[start, end]`，开始和结束阶段都包含
+- `start` 默认是 `pretrain`
+- `end` 默认是 `sft`
 - `mode` 可选：`full`（默认，V100 完整配置）或 `mini`（纯 CPU 冒烟配置）
-- 也可以用 `./run_pipeline.sh --mode mini tokenize` 这种写法
 
 示例：
 
 ```bash
-./run_pipeline.sh tokenize          # full：从 tokenize 跑到 sft
-./run_pipeline.sh pretrain          # full：从 pretrain 跑到 sft
-./run_pipeline.sh tokenize mini     # mini：从 tokenize 跑到 sft
-./run_pipeline.sh prepare-sft mini  # mini：从 prepare-sft 跑到 sft
+./run_pipeline.sh                                          # full：pretrain -> sft
+./run_pipeline.sh --start tokenize                        # full：tokenize -> sft
+./run_pipeline.sh --start prepare-pretrain --end pretrain # full：只跑这两个阶段
+./run_pipeline.sh --start tokenize --end pretrain --mode mini
+./run_pipeline.sh --start prepare-sft --mode mini         # mini：prepare-sft -> sft
 ```
 
-默认从 `pretrain` 开始时，前提是 tokenizer 和预训练数据已经准备好；如果需要从头生成，请显式传入 `tokenize`。
+默认从 `pretrain` 开始时，前提是 tokenizer 和预训练数据已经准备好；如果需要从头生成，请显式传入 `--start tokenize`。
 
 ### run_chat.sh
 
@@ -122,7 +124,7 @@ CKPT=checkpoints/sft_full/final.pt ./run_chat.sh
 
 ```bash
 # 一键执行 full 模式：tokenize -> prepare-pretrain -> pretrain -> prepare-sft -> sft
-./run_pipeline.sh tokenize
+./run_pipeline.sh --start tokenize
 
 # 交互式生成
 ./run_chat.sh
@@ -232,7 +234,7 @@ utils/                  日志、绘图、随机种子
 scripts/gpu_smoke.py    V100 冒烟测试
 tests/                  单元测试
 main.py                 CLI 入口
-run_pipeline.sh         从指定阶段跑到 sft
+run_pipeline.sh         按 start/end 闭区间执行阶段
 run_chat.sh             加载 checkpoint 进入 chat
 ```
 

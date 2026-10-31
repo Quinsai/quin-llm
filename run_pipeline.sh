@@ -1,49 +1,56 @@
 #!/usr/bin/env bash
-# Run quin-llm stages from PHASE through sft.
+# Run quin-llm stages in the inclusive range [start, end].
 #
 # Usage:
-#   ./run_pipeline.sh [phase] [mode]
-#   ./run_pipeline.sh --mode <full|mini> [phase]
+#   ./run_pipeline.sh [--start STAGE] [--end STAGE] [--mode full|mini]
 #
-# phase: tokenize | prepare-pretrain | pretrain | prepare-sft | sft
-#        default: pretrain
-# mode:  full (default, GPU configs) | mini (CPU smoke configs)
+# start default: pretrain
+# end default:   sft
+# mode default:  full
+#
+# Stage order:
+#   tokenize | prepare-pretrain | pretrain | prepare-sft | sft
 #
 # Examples:
-#   ./run_pipeline.sh tokenize
-#   ./run_pipeline.sh prepare-sft mini
-#   ./run_pipeline.sh --mode mini tokenize
+#   ./run_pipeline.sh
+#   ./run_pipeline.sh --start tokenize
+#   ./run_pipeline.sh --start prepare-pretrain --end pretrain
+#   ./run_pipeline.sh --start tokenize --end pretrain --mode mini
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
 usage() {
     cat <<'EOF'
-Usage: ./run_pipeline.sh [phase] [mode]
+Usage: ./run_pipeline.sh [--start STAGE] [--end STAGE] [--mode full|mini]
 
-phase (default: pretrain):
+start (default: pretrain):
   tokenize           train the BPE tokenizer
   prepare-pretrain   build pretrain token files
   pretrain           train the base model
   prepare-sft        build token-level SFT samples
   sft                fine-tune on instructions
 
+end (default: sft):
+  same stage names as start
+
 mode (default: full):
   full               GPU/full configs
   mini               CPU-only smoke configs
 
-The script runs the selected phase and every later phase through sft.
+The script runs every stage from start through end, inclusive.
 
 Examples:
-  ./run_pipeline.sh tokenize
-  ./run_pipeline.sh prepare-sft mini
-  ./run_pipeline.sh --mode mini tokenize
+  ./run_pipeline.sh
+  ./run_pipeline.sh --start tokenize
+  ./run_pipeline.sh --start prepare-pretrain --end pretrain
+  ./run_pipeline.sh --start tokenize --end pretrain --mode mini
 EOF
 }
 
-PHASE="pretrain"
+START_PHASE="pretrain"
+END_PHASE="sft"
 MODE="full"
-POSITIONAL=()
 
 while (($#)); do
     case "$1" in
@@ -51,9 +58,33 @@ while (($#)); do
             usage
             exit 0
             ;;
+        --start)
+            if (($# < 2)); then
+                echo "error: --start requires a value" >&2
+                exit 2
+            fi
+            START_PHASE="$2"
+            shift 2
+            ;;
+        --start=*)
+            START_PHASE="${1#*=}"
+            shift
+            ;;
+        --end)
+            if (($# < 2)); then
+                echo "error: --end requires a value" >&2
+                exit 2
+            fi
+            END_PHASE="$2"
+            shift 2
+            ;;
+        --end=*)
+            END_PHASE="${1#*=}"
+            shift
+            ;;
         --mode)
             if (($# < 2)); then
-                echo "error: --mode requires a value (full or mini)" >&2
+                echo "error: --mode requires a value" >&2
                 exit 2
             fi
             MODE="$2"
@@ -63,36 +94,22 @@ while (($#)); do
             MODE="${1#*=}"
             shift
             ;;
-        --)
-            shift
-            POSITIONAL+=("$@")
-            break
-            ;;
         -*)
             echo "error: unknown option: $1" >&2
             usage >&2
             exit 2
             ;;
         *)
-            POSITIONAL+=("$1")
-            shift
+            echo "error: unexpected positional argument: $1" >&2
+            echo "hint: use --start STAGE / --end STAGE / --mode full|mini" >&2
+            usage >&2
+            exit 2
             ;;
     esac
 done
 
-if ((${#POSITIONAL[@]} > 2)); then
-    echo "error: too many arguments" >&2
-    usage >&2
-    exit 2
-fi
-if ((${#POSITIONAL[@]} >= 1)); then
-    PHASE="${POSITIONAL[0]}"
-fi
-if ((${#POSITIONAL[@]} >= 2)); then
-    MODE="${POSITIONAL[1]}"
-fi
-
-PHASE="${PHASE//_/-}"
+START_PHASE="${START_PHASE//_/-}"
+END_PHASE="${END_PHASE//_/-}"
 MODE="${MODE,,}"
 
 case "$MODE" in
@@ -122,23 +139,35 @@ PYTHON="${PYTHON:-python}"
 
 PHASES=(tokenize prepare-pretrain pretrain prepare-sft sft)
 START_INDEX=-1
+END_INDEX=-1
 for i in "${!PHASES[@]}"; do
-    if [[ "${PHASES[$i]}" == "$PHASE" ]]; then
+    if [[ "${PHASES[$i]}" == "$START_PHASE" ]]; then
         START_INDEX=$i
-        break
+    fi
+    if [[ "${PHASES[$i]}" == "$END_PHASE" ]]; then
+        END_INDEX=$i
     fi
 done
 
 if ((START_INDEX < 0)); then
-    echo "error: invalid phase '$PHASE'" >&2
+    echo "error: invalid start stage '$START_PHASE'" >&2
     echo "expected one of: ${PHASES[*]}" >&2
+    exit 2
+fi
+if ((END_INDEX < 0)); then
+    echo "error: invalid end stage '$END_PHASE'" >&2
+    echo "expected one of: ${PHASES[*]}" >&2
+    exit 2
+fi
+if ((START_INDEX > END_INDEX)); then
+    echo "error: start stage '$START_PHASE' comes after end stage '$END_PHASE'" >&2
     exit 2
 fi
 
 require_pretrain_ckpt() {
     if [[ ! -f "$PRETRAIN_CKPT" ]]; then
         echo "error: pretrain checkpoint not found: $PRETRAIN_CKPT" >&2
-        echo "hint: run './run_pipeline.sh pretrain $MODE' first, or set PRETRAIN_CKPT" >&2
+        echo "hint: run './run_pipeline.sh --start pretrain --end pretrain --mode $MODE' first, or set PRETRAIN_CKPT" >&2
         exit 1
     fi
 }
@@ -172,16 +201,16 @@ run_phase() {
     esac
 }
 
-echo "pipeline: phase=$PHASE mode=$MODE"
+echo "pipeline: start=$START_PHASE end=$END_PHASE mode=$MODE"
 echo "config: tokenizer=$TOKENIZER_CONFIG"
 echo "config: pretrain=$PRETRAIN_CONFIG"
 echo "config: sft=$SFT_CONFIG"
 echo "ckpt:   pretrain=$PRETRAIN_CKPT"
 echo "python: $PYTHON"
 
-for ((i = START_INDEX; i < ${#PHASES[@]}; i++)); do
+for ((i = START_INDEX; i <= END_INDEX; i++)); do
     run_phase "${PHASES[$i]}"
 done
 
 echo
-echo "pipeline finished: phase=$PHASE mode=$MODE"
+echo "pipeline finished: start=$START_PHASE end=$END_PHASE mode=$MODE"
