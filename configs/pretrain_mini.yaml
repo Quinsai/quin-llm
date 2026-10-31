@@ -1,6 +1,6 @@
 # CPU-only mini smoke configuration. Not meant to produce a good model.
 model:
-  vocab_size: 1024
+  # vocab_size comes from data.tokenizer_path at runtime.
   block_size: 128
   n_layer: 2
   n_embd: 128

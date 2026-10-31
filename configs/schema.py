@@ -18,7 +18,7 @@ import yaml
 class ModelConfig:
     """Everything needed to rebuild a TinyModel."""
 
-    vocab_size: int = 8192
+    vocab_size: int = 8192  # overwritten by the tokenizer during pretraining
     block_size: int = 512
     n_layer: int = 6
     n_embd: int = 384

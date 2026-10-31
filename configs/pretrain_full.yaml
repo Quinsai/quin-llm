@@ -1,6 +1,6 @@
 # ~14M parameter decoder, intended for a V100 32GB.
 model:
-  vocab_size: 8192
+  # vocab_size comes from data.tokenizer_path at runtime.
   block_size: 512
   n_layer: 6
   n_embd: 384

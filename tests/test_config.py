@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class TestStageConfigs(unittest.TestCase):
     def test_mini_pretrain_config(self):
         cfg = PretrainConfig.from_yaml(ROOT / "configs" / "pretrain_mini.yaml")
-        self.assertEqual(cfg.model.vocab_size, 1024)
+        # vocab_size is resolved from the tokenizer when pretraining starts.
         self.assertEqual(cfg.model.n_layer, 2)
         self.assertEqual(cfg.data.out_dir, "processed_data/pretrain_mini")
         self.assertFalse(cfg.train.amp)

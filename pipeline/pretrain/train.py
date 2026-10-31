@@ -26,14 +26,15 @@ def run_pretrain(cfg: PretrainConfig, resume_from: str | None = None) -> float:
 
     tokenizer = load_tokenizer(data_cfg.tokenizer_path)
     model_cfg = cfg.model
-    if model_cfg.vocab_size != tokenizer.vocab_size:
-        print(
-            f"warning: model vocab_size={model_cfg.vocab_size} but tokenizer has "
-            f"{tokenizer.vocab_size}; using the tokenizer size"
-        )
-        model_cfg.vocab_size = tokenizer.vocab_size
+    model_cfg.vocab_size = tokenizer.vocab_size
+    print(f"model: vocab_size={model_cfg.vocab_size:,} (from tokenizer)")
 
     meta = load_pretrain_meta(data_cfg.out_dir)
+    if int(meta["vocab_size"]) != tokenizer.vocab_size:
+        raise ValueError(
+            f"{data_cfg.out_dir} was prepared with vocab_size={meta['vocab_size']}, "
+            f"but tokenizer has {tokenizer.vocab_size}; rerun prepare-pretrain"
+        )
     train_path = Path(data_cfg.out_dir) / "train.bin"
     val_path = Path(data_cfg.out_dir) / "val.bin"
     train_ds = PretrainDataset(
