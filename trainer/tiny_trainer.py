@@ -78,14 +78,21 @@ class Trainer:
         if hasattr(dataset, "seed_rng"):
             dataset.seed_rng(seed)
 
-    def _make_loader(self, dataset: Dataset, shuffle: bool) -> DataLoader:
+    def _make_loader(
+        self,
+        dataset: Dataset,
+        shuffle: bool,
+        drop_last: bool | None = None,
+    ) -> DataLoader:
+        if drop_last is None:
+            drop_last = shuffle
         generator = torch.Generator()
         generator.manual_seed(self.cfg.seed)
         return DataLoader(
             dataset,
             batch_size=self.cfg.batch_size,
             shuffle=shuffle,
-            drop_last=shuffle,
+            drop_last=drop_last,
             num_workers=self.cfg.num_workers,
             pin_memory=(self.device.type == "cuda"),
             persistent_workers=self.cfg.num_workers > 0,
@@ -312,8 +319,10 @@ class Trainer:
                 f"train dataset has {len(train_dataset)} samples, fewer than "
                 f"batch_size={self.cfg.batch_size}"
             )
+        # Shuffle validation windows so each evaluation samples the whole
+        # val.bin instead of only its prefix (TinyStories before wikitext).
         val_loader = (
-            self._make_loader(val_dataset, shuffle=False)
+            self._make_loader(val_dataset, shuffle=True, drop_last=False)
             if val_dataset is not None and len(val_dataset) > 0
             else None
         )
