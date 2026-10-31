@@ -18,7 +18,7 @@ from __future__ import annotations
 import heapq
 import pickle
 import re
-from collections import Counter, defaultdict
+from collections import Counter, OrderedDict, defaultdict
 from pathlib import Path
 from typing import Iterable, Iterator
 
@@ -33,6 +33,7 @@ SPLIT_PATTERN = re.compile(r" ?[A-Za-z]+| ?[0-9]+| ?[^\sA-Za-z0-9]+|\s+")
 
 class BPETokenizer:
     version = 2
+    CHUNK_CACHE_SIZE = 200_000
 
     def __init__(
         self,
@@ -49,6 +50,10 @@ class BPETokenizer:
         self.merge_result: dict[tuple[int, int], int] = {}
         self.token_bytes: dict[int, bytes] = {i: bytes([i]) for i in range(256)}
         self.vocab_size = 256 + len(self.special_tokens)
+        # Encoding the same chunk repeatedly is the main cost of preparing a
+        # large corpus.  Cache chunk -> token ids for the lifetime of the
+        # process; the cache is not part of the serialized tokenizer.
+        self._chunk_cache: OrderedDict[str, tuple[int, ...]] = OrderedDict()
 
     # ------------------------------------------------------------------
     # special token helpers
@@ -102,6 +107,9 @@ class BPETokenizer:
         target = vocab_size or self.target_vocab_size
         if target <= self.vocab_size:
             raise ValueError(f"vocab_size must be > {self.vocab_size}")
+        # Merge rules change during training, so any cached encodings from a
+        # previous run are no longer valid.
+        self._chunk_cache.clear()
 
         chunk_freq: Counter[str] = Counter()
         n_chars = 0
@@ -219,10 +227,10 @@ class BPETokenizer:
     # ------------------------------------------------------------------
     # encoding / decoding
     # ------------------------------------------------------------------
-    def _encode_chunk(self, chunk: str) -> list[int]:
+    def _encode_chunk(self, chunk: str) -> tuple[int, ...]:
         ids = list(chunk.encode("utf-8"))
         if not self.merge_ranks or len(ids) < 2:
-            return ids
+            return tuple(ids)
         while len(ids) > 1:
             best_rank: int | None = None
             best_i = -1
@@ -235,6 +243,18 @@ class BPETokenizer:
                 break
             pair = (ids[best_i], ids[best_i + 1])
             ids[best_i : best_i + 2] = [self.merge_result[pair]]
+        return tuple(ids)
+
+    def _encode_chunk_cached(self, chunk: str) -> tuple[int, ...]:
+        cached = self._chunk_cache.get(chunk)
+        if cached is not None:
+            self._chunk_cache.move_to_end(chunk)
+            return cached
+
+        ids = self._encode_chunk(chunk)
+        self._chunk_cache[chunk] = ids
+        if len(self._chunk_cache) > self.CHUNK_CACHE_SIZE:
+            self._chunk_cache.popitem(last=False)
         return ids
 
     def encode(self, text: str, add_bos: bool = True, add_eos: bool = False) -> list[int]:
@@ -242,7 +262,7 @@ class BPETokenizer:
         if add_bos:
             ids.append(self.bos_id)
         for chunk in self._pretokenize(text):
-            ids.extend(self._encode_chunk(chunk))
+            ids.extend(self._encode_chunk_cached(chunk))
         if add_eos:
             ids.append(self.eos_id)
         return ids
