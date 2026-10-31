@@ -37,7 +37,6 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
     samples: list[tuple[np.ndarray, np.ndarray]] = []
     skipped = 0
     overlong = 0
-    answer_lengths: list[int] = []
 
     total_examples = source.get("num_examples") or source.get("total")
     if total_examples is None and source.get("type", "hf") == "file":
@@ -77,7 +76,6 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
                     np.asarray(labels, dtype=np.int32),
                 )
             )
-            answer_lengths.append(sum(1 for x in labels if x != -100))
             pbar.set_postfix(kept=len(samples), skipped=skipped, overlong=overlong)
 
     if not samples:
@@ -105,6 +103,36 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
     torch.save(train, out_dir / "train.pt")
     torch.save(val, out_dir / "val.pt")
 
+    def token_stats(part: dict) -> dict[str, int]:
+        labels = part["labels"]
+        if labels.size(0) == 0:
+            return {
+                "samples": 0,
+                "total_tokens": 0,
+                "answer_tokens": 0,
+                "max_total_tokens": 0,
+                "max_answer_tokens": 0,
+            }
+        # Prompt and padding labels are -100; the last answer token is the
+        # final non-ignored position, so it also marks the real sequence end.
+        answer_mask = labels != -100
+        answer_counts = answer_mask.sum(dim=1)
+        positions = torch.arange(labels.size(1), dtype=torch.long).unsqueeze(0)
+        total_lengths = (answer_mask * positions).max(dim=1).values + 1
+        return {
+            "samples": int(labels.size(0)),
+            "total_tokens": int(total_lengths.sum().item()),
+            "answer_tokens": int(answer_counts.sum().item()),
+            "max_total_tokens": int(total_lengths.max().item()),
+            "max_answer_tokens": int(answer_counts.max().item()),
+        }
+
+    train_stats = token_stats(train)
+    val_stats = token_stats(val)
+    total_tokens = train_stats["total_tokens"] + val_stats["total_tokens"]
+    answer_tokens = train_stats["answer_tokens"] + val_stats["answer_tokens"]
+    sample_count = train_stats["samples"] + val_stats["samples"]
+
     meta = {
         "tokenizer_path": str(cfg.get("tokenizer_path", "")),
         "vocab_size": tokenizer.vocab_size,
@@ -113,15 +141,32 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
         "val_samples": len(val_samples),
         "skipped": skipped,
         "overlong_samples": overlong,
-        "avg_answer_tokens": float(np.mean(answer_lengths)),
-        "max_answer_tokens": int(np.max(answer_lengths)),
+        "train_total_tokens": train_stats["total_tokens"],
+        "val_total_tokens": val_stats["total_tokens"],
+        "train_answer_tokens": train_stats["answer_tokens"],
+        "val_answer_tokens": val_stats["answer_tokens"],
+        "total_tokens": total_tokens,
+        "answer_tokens": answer_tokens,
+        "avg_total_tokens": total_tokens / sample_count,
+        "max_total_tokens": max(
+            train_stats["max_total_tokens"], val_stats["max_total_tokens"]
+        ),
+        "avg_answer_tokens": answer_tokens / sample_count,
+        "max_answer_tokens": max(
+            train_stats["max_answer_tokens"], val_stats["max_answer_tokens"]
+        ),
         "source": source,
     }
     with open(out_dir / "meta.json", "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
     print(
         f"SFT data ready: train={len(train_samples):,}, val={len(val_samples):,}, "
-        f"skipped={skipped:,} (overlong={overlong:,}), "
-        f"avg_answer_tokens={meta['avg_answer_tokens']:.1f}"
+        f"skipped={skipped:,} (overlong={overlong:,})"
+    )
+    print(
+        f"  tokens: train={train_stats['total_tokens']:,}, "
+        f"val={val_stats['total_tokens']:,}, answer={answer_tokens:,} "
+        f"(avg total={meta['avg_total_tokens']:.1f}, "
+        f"avg answer={meta['avg_answer_tokens']:.1f})"
     )
     return meta

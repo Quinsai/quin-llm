@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from config import ModelConfig, PrepareSFTConfig, SFTConfig, SFTDataConfig
@@ -49,6 +50,17 @@ def run_sft(
         )
 
     out_dir = Path(data_cfg.out_dir)
+    meta_path = out_dir / "meta.json"
+    if meta_path.exists():
+        with open(meta_path, "r", encoding="utf-8") as f:
+            sft_meta = json.load(f)
+        if "total_tokens" in sft_meta:
+            print(
+                f"SFT tokens: train={int(sft_meta['train_total_tokens']):,}, "
+                f"val={int(sft_meta['val_total_tokens']):,}, "
+                f"answer={int(sft_meta['answer_tokens']):,} "
+                f"(avg total={float(sft_meta['avg_total_tokens']):.1f})"
+            )
     train_ds = SFTDataset(out_dir / "train.pt")
     val_ds = SFTDataset(out_dir / "val.pt") if (out_dir / "val.pt").exists() else None
     if val_ds is not None and len(val_ds) == 0:

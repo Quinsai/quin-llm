@@ -80,7 +80,7 @@ class TestDatasets(unittest.TestCase):
                 "seed": 0,
                 "source": {"type": "file", "path": str(source)},
             }
-            prepare_sft(cfg, self.tokenizer, block_size=64)
+            meta = prepare_sft(cfg, self.tokenizer, block_size=64)
             data = torch.load(tmp / "out" / "train.pt", weights_only=False)
             input_ids, labels = data["input_ids"], data["labels"]
             # One extra token is stored so the dataset can shift without loss.
@@ -101,7 +101,18 @@ class TestDatasets(unittest.TestCase):
             # The dataset trims padding and returns next-token targets that are
             # at most block_size tokens long.
             valid_len = int(torch.nonzero(labels[0] != -100)[-1]) + 1
+            answer_tokens = int((labels[0] != -100).sum())
             self.assertLess(valid_len, 65)
+            self.assertEqual(meta["train_total_tokens"], valid_len)
+            self.assertEqual(meta["train_answer_tokens"], answer_tokens)
+            self.assertEqual(meta["val_total_tokens"], 0)
+            self.assertEqual(meta["val_answer_tokens"], 0)
+            self.assertEqual(meta["total_tokens"], valid_len)
+            self.assertEqual(meta["answer_tokens"], answer_tokens)
+            self.assertAlmostEqual(meta["avg_total_tokens"], float(valid_len))
+            self.assertEqual(meta["max_total_tokens"], valid_len)
+            self.assertAlmostEqual(meta["avg_answer_tokens"], float(answer_tokens))
+            self.assertEqual(meta["max_answer_tokens"], answer_tokens)
             x, y = SFTDataset(tmp / "out" / "train.pt")[0]
             self.assertEqual(x.size(0), valid_len - 1)
             self.assertEqual(y.size(0), valid_len - 1)
@@ -138,6 +149,11 @@ class TestDatasets(unittest.TestCase):
             self.assertEqual(meta["overlong_samples"], 1)
             data = torch.load(tmp / "out" / "train.pt", weights_only=False)
             self.assertEqual(data["input_ids"].shape[0], 1)
+            labels = data["labels"][0]
+            valid_len = int(torch.nonzero(labels != -100)[-1]) + 1
+            self.assertEqual(meta["train_total_tokens"], valid_len)
+            self.assertEqual(meta["answer_tokens"], int((labels != -100).sum()))
+            self.assertEqual(meta["total_tokens"], meta["train_total_tokens"])
 
 
 if __name__ == "__main__":
