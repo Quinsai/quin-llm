@@ -7,6 +7,7 @@ import random
 from pathlib import Path
 
 import numpy as np
+from tqdm import tqdm
 
 from data_pipeline.sources import iter_source_texts
 
@@ -43,34 +44,43 @@ def prepare_pretrain(cfg: dict, tokenizer) -> dict:
 
     rng = random.Random(seed)
     written = 0
-    try:
-        for source, weight in zip(sources, weights):
-            budget = int(total_budget * weight / weight_sum)
-            used = 0
-            print(f"pretrain data: source={source.get('dataset', source.get('path'))} budget={budget:,}")
-            for text in iter_source_texts(source):
-                ids = tokenizer.encode(text, add_bos=True, add_eos=True)
-                if not ids:
-                    continue
-                split = "val" if (val_fraction > 0 and rng.random() < val_fraction) else "train"
-                buffers[split].extend(ids)
-                counts[split] += len(ids)
-                used += len(ids)
-                written += len(ids)
-                if len(buffers[split]) >= 2_000_000:
-                    flush(split)
-                if used >= budget or written >= total_budget:
+    with tqdm(
+        total=total_budget,
+        desc="prepare-pretrain",
+        unit="tok",
+        unit_scale=True,
+        dynamic_ncols=True,
+    ) as pbar:
+        try:
+            for source, weight in zip(sources, weights):
+                budget = int(total_budget * weight / weight_sum)
+                used = 0
+                source_name = source.get("dataset", source.get("path"))
+                pbar.write(f"pretrain data: source={source_name} budget={budget:,}")
+                for text in iter_source_texts(source):
+                    ids = tokenizer.encode(text, add_bos=True, add_eos=True)
+                    if not ids:
+                        continue
+                    split = "val" if (val_fraction > 0 and rng.random() < val_fraction) else "train"
+                    buffers[split].extend(ids)
+                    counts[split] += len(ids)
+                    used += len(ids)
+                    written += len(ids)
+                    pbar.update(len(ids))
+                    if len(buffers[split]) >= 2_000_000:
+                        flush(split)
+                    if used >= budget or written >= total_budget:
+                        break
+                flush("train")
+                flush("val")
+                pbar.write(f"  source done: train={counts['train']:,} val={counts['val']:,}")
+                if written >= total_budget:
                     break
+        finally:
             flush("train")
             flush("val")
-            print(f"  source done: train={counts['train']:,} val={counts['val']:,}")
-            if written >= total_budget:
-                break
-    finally:
-        flush("train")
-        flush("val")
-        train_f.close()
-        val_f.close()
+            train_f.close()
+            val_f.close()
 
     meta = {
         "tokenizer_path": str(cfg.get("tokenizer_path", "")),

@@ -11,6 +11,7 @@ from typing import Iterable
 
 import torch
 from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
 
 from config import TrainConfig
 from utils.logger import CSVLogger
@@ -193,6 +194,13 @@ class Trainer:
             self.out_dir / f"{tag}_log.csv",
             ["step", "loss", "val_loss", "lr", "tokens_per_sec"],
         )
+        pbar = tqdm(
+            total=max_steps,
+            initial=step,
+            desc=tag,
+            unit="step",
+            dynamic_ncols=True,
+        )
         try:
             while step < max_steps:
                 for batch in train_loader:
@@ -216,14 +224,20 @@ class Trainer:
                     self.scaler.update()
                     self.optimizer.zero_grad(set_to_none=True)
                     step += 1
+                    pbar.update(1)
 
                     train_loss = accum_loss / self.cfg.grad_accum_steps
                     accum_loss = 0.0
                     elapsed = max(1e-9, time.time() - start_time)
                     tokens_per_sec = tokens_seen / elapsed
+                    pbar.set_postfix(
+                        loss=f"{train_loss:.4f}",
+                        lr=f"{lr:.1e}",
+                        tok_s=f"{tokens_per_sec:,.0f}",
+                    )
 
                     if step == 1 or step % self.cfg.log_interval == 0:
-                        print(
+                        pbar.write(
                             f"[{tag}] step {step}/{max_steps} "
                             f"loss {train_loss:.4f} lr {lr:.2e} "
                             f"{tokens_per_sec:,.0f} tok/s"
@@ -242,7 +256,7 @@ class Trainer:
                         and step % self.cfg.eval_interval == 0
                     ):
                         val_loss = self.evaluate(val_loader)
-                        print(f"[{tag}] step {step} val_loss {val_loss:.4f}")
+                        pbar.write(f"[{tag}] step {step} val_loss {val_loss:.4f}")
                         logger.log(
                             step=step,
                             loss=train_loss,
@@ -264,6 +278,7 @@ class Trainer:
                     if step >= max_steps:
                         break
         finally:
+            pbar.close()
             logger.close()
 
         final_val = best_val if best_val < float("inf") else None

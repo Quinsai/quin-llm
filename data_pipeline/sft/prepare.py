@@ -8,8 +8,9 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from tqdm import tqdm
 
-from data_pipeline.sources import iter_sft_examples
+from data_pipeline.sources import iter_sft_examples, parse_sft_file
 
 PROMPT_TEMPLATE = "###User:\n{user}\n###Agent:\n"
 
@@ -72,28 +73,42 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
     skipped = 0
     answer_lengths: list[int] = []
 
-    for user, answer in iter_sft_examples(source):
-        prompt = PROMPT_TEMPLATE.format(user=user)
-        prompt_ids = tokenizer.encode(prompt, add_bos=True, add_eos=False)
-        answer_ids = tokenizer.encode(answer, add_bos=False, add_eos=True)
-        if not answer_ids:
-            skipped += 1
-            continue
-        ids, labels = _fit_to_block_size(prompt_ids, answer_ids, stored_len, eos_id)
-        if len(ids) > stored_len:
-            # Should not happen, but never write malformed samples.
-            skipped += 1
-            continue
-        pad = stored_len - len(ids)
-        ids = ids + [pad_id] * pad
-        labels = labels + [-100] * pad
-        samples.append(
-            (
-                np.asarray(ids, dtype=np.int32),
-                np.asarray(labels, dtype=np.int32),
+    total_examples = source.get("num_examples") or source.get("total")
+    if total_examples is None and source.get("type", "hf") == "file":
+        # Local files are cheap to scan once, so show a real percentage.
+        total_examples = sum(1 for _ in parse_sft_file(source["path"]))
+    with tqdm(
+        total=total_examples,
+        desc="prepare-sft",
+        unit="sample",
+        dynamic_ncols=True,
+    ) as pbar:
+        for user, answer in iter_sft_examples(source):
+            pbar.update(1)
+            prompt = PROMPT_TEMPLATE.format(user=user)
+            prompt_ids = tokenizer.encode(prompt, add_bos=True, add_eos=False)
+            answer_ids = tokenizer.encode(answer, add_bos=False, add_eos=True)
+            if not answer_ids:
+                skipped += 1
+                pbar.set_postfix(kept=len(samples), skipped=skipped)
+                continue
+            ids, labels = _fit_to_block_size(prompt_ids, answer_ids, stored_len, eos_id)
+            if len(ids) > stored_len:
+                # Should not happen, but never write malformed samples.
+                skipped += 1
+                pbar.set_postfix(kept=len(samples), skipped=skipped)
+                continue
+            pad = stored_len - len(ids)
+            ids = ids + [pad_id] * pad
+            labels = labels + [-100] * pad
+            samples.append(
+                (
+                    np.asarray(ids, dtype=np.int32),
+                    np.asarray(labels, dtype=np.int32),
+                )
             )
-        )
-        answer_lengths.append(sum(1 for x in labels if x != -100))
+            answer_lengths.append(sum(1 for x in labels if x != -100))
+            pbar.set_postfix(kept=len(samples), skipped=skipped)
 
     if not samples:
         raise ValueError("no SFT samples were produced")

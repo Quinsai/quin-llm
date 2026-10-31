@@ -10,6 +10,7 @@ data:
     type: hf
     dataset: tatsu-lab/alpaca
     split: train
+    num_examples: 52002
 
 train:
   out_dir: checkpoints/sft_full

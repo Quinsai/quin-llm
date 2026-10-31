@@ -22,6 +22,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Iterable, Iterator
 
+from tqdm import tqdm
+
 SPECIAL_TOKENS: tuple[str, ...] = ("<PAD>", "<BOS>", "<EOS>", "<UNK>")
 
 # Split text into word-ish chunks.  Keeping the leading space in the chunk lets
@@ -103,13 +105,20 @@ class BPETokenizer:
 
         chunk_freq: Counter[str] = Counter()
         n_chars = 0
-        for text in texts:
-            chunk_freq.update(self._pretokenize(text))
-            n_chars += len(text)
-            if verbose and n_chars and n_chars % 10_000_000 < len(text):
-                print(f"  tokenizer: read {n_chars / 1e6:.1f}M chars")
-            if max_chars is not None and n_chars >= max_chars:
-                break
+        with tqdm(
+            total=max_chars,
+            desc="tokenize: read",
+            unit="char",
+            unit_scale=True,
+            dynamic_ncols=True,
+            disable=not verbose,
+        ) as read_bar:
+            for text in texts:
+                chunk_freq.update(self._pretokenize(text))
+                n_chars += len(text)
+                read_bar.update(len(text))
+                if max_chars is not None and n_chars >= max_chars:
+                    break
 
         # Convert word strings to byte-id tuples and aggregate duplicates.
         word_freqs: dict[tuple[int, ...], int] = {}
@@ -133,7 +142,13 @@ class BPETokenizer:
         heapq.heapify(heap)
 
         num_merges = target - self.vocab_size
-        for merge_i in range(num_merges):
+        for merge_i in tqdm(
+            range(num_merges),
+            desc="tokenize: merges",
+            unit="merge",
+            dynamic_ncols=True,
+            disable=not verbose,
+        ):
             best: tuple[tuple[int, int], int] | None = None
             while heap:
                 neg_count, a, b = heapq.heappop(heap)
@@ -192,9 +207,6 @@ class BPETokenizer:
                 count = pair_counts.get(p, 0)
                 if count > 0:
                     heapq.heappush(heap, (-count, p[0], p[1]))
-
-            if verbose and (merge_i + 1) % 500 == 0:
-                print(f"  tokenizer: {merge_i + 1}/{num_merges} merges, vocab={self.vocab_size}")
 
         self.target_vocab_size = target
         if verbose:
