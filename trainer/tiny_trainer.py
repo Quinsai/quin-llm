@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import random
 import time
@@ -155,6 +156,7 @@ class Trainer:
     def save_checkpoint(self, path: str | Path, step: int, val_loss: float | None = None) -> None:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
+        model_config = self.model.config.to_dict()
         torch.save(
             {
                 "model_state": self.model.state_dict(),
@@ -162,17 +164,43 @@ class Trainer:
                 "scaler_state": self.scaler.state_dict() if self.use_amp else None,
                 "step": int(step),
                 "val_loss": val_loss,
-                "model_config": self.model.config.to_dict(),
+                "model_config": model_config,
                 "tokenizer_path": self.tokenizer_path,
                 "vocab_size": self.tokenizer.vocab_size,
                 "special_ids": {k: int(v) for k, v in self.tokenizer.special_ids.items()},
             },
             path,
         )
+        # Small sidecar so later stages can read the architecture without
+        # loading model/optimizer tensors from the full checkpoint.
+        with open(path.parent / "model_config.json", "w", encoding="utf-8") as f:
+            json.dump(model_config, f, indent=2)
 
     @staticmethod
     def load_checkpoint(path: str | Path, map_location: str = "cpu") -> dict:
         return torch.load(path, map_location=map_location, weights_only=False)
+
+    @staticmethod
+    def load_model_config(path: str | Path) -> dict:
+        """Read only the model architecture stored with a checkpoint."""
+        path = Path(path)
+        sidecar = path.parent / "model_config.json"
+        if sidecar.exists():
+            try:
+                with open(sidecar, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except (OSError, json.JSONDecodeError):
+                pass
+        # Older checkpoints have no sidecar. mmap keeps tensor storages on
+        # disk instead of loading the full model/optimizer state into RAM.
+        try:
+            checkpoint = torch.load(
+                path, map_location="cpu", mmap=True, weights_only=False
+            )
+        except (RuntimeError, TypeError):
+            # Legacy non-zip checkpoints do not support mmap.
+            checkpoint = torch.load(path, map_location="cpu", weights_only=False)
+        return checkpoint["model_config"]
 
     def load_pretrained(self, path: str | Path) -> dict:
         checkpoint = self.load_checkpoint(path, map_location="cpu")

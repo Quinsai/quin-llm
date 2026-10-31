@@ -16,8 +16,8 @@ from utils.seed import set_seed
 
 def _sft_block_size(data_cfg: SFTDataConfig, ckpt: str | None) -> int:
     if ckpt:
-        checkpoint = Trainer.load_checkpoint(ckpt)
-        return int(checkpoint["model_config"]["block_size"])
+        model_config = Trainer.load_model_config(ckpt)
+        return int(model_config["block_size"])
     return int(data_cfg.block_size)
 
 
