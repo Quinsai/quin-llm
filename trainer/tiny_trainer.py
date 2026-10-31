@@ -6,6 +6,7 @@ import math
 import random
 import time
 from contextlib import nullcontext
+from functools import partial
 from pathlib import Path
 from typing import Iterable
 
@@ -16,6 +17,19 @@ from tqdm import tqdm
 from config import TrainConfig
 from utils.logger import CSVLogger
 from utils.visualizer import draw_curves
+
+
+def _pad_batch(batch, pad_id: int):
+    """Pad variable-length ``(x, y)`` pairs to the longest sample in a batch."""
+    xs, ys = zip(*batch)
+    max_len = max(x.size(0) for x in xs)
+    x_batch = torch.full((len(xs), max_len), pad_id, dtype=torch.long)
+    y_batch = torch.full((len(ys), max_len), -100, dtype=torch.long)
+    for i, (x, y) in enumerate(zip(xs, ys)):
+        length = x.size(0)
+        x_batch[i, :length] = x
+        y_batch[i, :length] = y
+    return x_batch, y_batch
 
 
 class Trainer:
@@ -84,6 +98,7 @@ class Trainer:
         dataset: Dataset,
         shuffle: bool,
         drop_last: bool | None = None,
+        collate_fn=None,
     ) -> DataLoader:
         if drop_last is None:
             drop_last = shuffle
@@ -99,6 +114,7 @@ class Trainer:
             persistent_workers=self.cfg.num_workers > 0,
             worker_init_fn=self._worker_init if self.cfg.num_workers > 0 else None,
             generator=generator,
+            collate_fn=collate_fn,
         )
 
     def _to_device(self, batch):
@@ -343,14 +359,19 @@ class Trainer:
         if pretrain_checkpoint and not resume_from:
             self.load_pretrained(pretrain_checkpoint)
             print(f"loaded pretrained weights from {pretrain_checkpoint}")
-        train_loader = self._make_loader(train_dataset, shuffle=True)
+        # SFT samples are variable length after SFTDataset trims padding.
+        # Pad each batch only to its own longest sample.
+        collate_fn = partial(_pad_batch, pad_id=self.tokenizer.pad_id)
+        train_loader = self._make_loader(
+            train_dataset, shuffle=True, collate_fn=collate_fn
+        )
         if len(train_loader) == 0:
             raise ValueError(
                 f"train dataset has {len(train_dataset)} samples, fewer than "
                 f"batch_size={self.cfg.batch_size}"
             )
         val_loader = (
-            self._make_loader(val_dataset, shuffle=False)
+            self._make_loader(val_dataset, shuffle=False, collate_fn=collate_fn)
             if val_dataset is not None and len(val_dataset) > 0
             else None
         )

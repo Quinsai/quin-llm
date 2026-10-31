@@ -97,7 +97,7 @@ class TestDatasets(unittest.TestCase):
             pad_positions = input_ids[0] == self.tokenizer.pad_id
             self.assertTrue(bool((labels[0][pad_positions] == -100).all()))
 
-            # The dataset must return next-token targets of length block_size.
+            # The dataset returns next-token targets, at most block_size long.
             x, y = SFTDataset(tmp / "out" / "train.pt")[0]
             self.assertEqual(tuple(x.shape), (32,))
             self.assertEqual(tuple(y.shape), (32,))
@@ -109,6 +109,19 @@ class TestDatasets(unittest.TestCase):
             first_answer = int(torch.nonzero(labels[0] != -100)[0])
             self.assertGreater(first_answer, 0)
             self.assertEqual(int(y[first_answer - 1]), int(input_ids[0][first_answer]))
+
+            # With a larger stored width the dataset trims padding instead of
+            # always returning block_size tokens.
+            short_cfg = dict(cfg)
+            short_cfg["out_dir"] = str(tmp / "short")
+            prepare_sft(short_cfg, self.tokenizer, block_size=64)
+            short_data = torch.load(tmp / "short" / "train.pt", weights_only=False)
+            short_labels = short_data["labels"][0]
+            valid_len = int(torch.nonzero(short_labels != -100)[-1]) + 1
+            short_x, short_y = SFTDataset(tmp / "short" / "train.pt")[0]
+            self.assertEqual(short_x.size(0), valid_len - 1)
+            self.assertEqual(short_y.size(0), valid_len - 1)
+            self.assertLess(short_x.size(0), 64)
 
 
 if __name__ == "__main__":

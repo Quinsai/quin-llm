@@ -66,7 +66,9 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
 
     # Store one extra token per sample.  The training model consumes
     # ``block_size`` inputs and predicts the next token, so ``SFTDataset``
-    # returns ``input_ids[:-1]`` and ``labels[1:]``.
+    # returns shifted inputs/targets.  Files keep a fixed width for simple
+    # storage; ``SFTDataset`` trims the padding and the loader pads each
+    # batch to its own longest sample.
     stored_len = int(block_size) + 1
 
     samples: list[tuple[np.ndarray, np.ndarray]] = []

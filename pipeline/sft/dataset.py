@@ -17,6 +17,26 @@ class SFTDataset(Dataset):
         self.labels = data["labels"]
         if self.input_ids.shape != self.labels.shape:
             raise ValueError("input_ids and labels must have the same shape")
+        self.lengths = self._valid_lengths()
+
+    def _valid_lengths(self) -> torch.Tensor:
+        """Return the real prompt+answer length of every row.
+
+        Prepared rows are padded to ``block_size + 1``.  The last non-ignored
+        label is the final answer token (or EOS), so everything after it is
+        padding and does not need to be fed to the model.
+        """
+        if self.labels.size(0) == 0:
+            return torch.empty(0, dtype=torch.long)
+        mask = self.labels != -100
+        if not bool(mask.any(dim=1).all()):
+            raise ValueError("every SFT sample must contain at least one answer token")
+        # Index of the first non-ignored label when read from the end.
+        tail = mask.flip(1).to(torch.int8).argmax(dim=1)
+        lengths = self.labels.size(1) - tail
+        if int(lengths.min()) < 2:
+            raise ValueError("SFT samples must contain at least a prompt and an answer token")
+        return lengths
 
     def __len__(self) -> int:
         return self.input_ids.size(0)
@@ -25,10 +45,12 @@ class SFTDataset(Dataset):
         # ``TinyModel.forward`` performs an unshifted cross-entropy on (x, y),
         # so the target at position i must be the token at input position i+1.
         # The prepared files store one extra token to make the shift lossless:
-        # x has exactly block_size tokens and y[i] == labels[i + 1].
-        input_ids = self.input_ids[index].long()
-        labels = self.labels[index].long()
-        return input_ids[:-1], labels[1:]
+        # y[i] == labels[i + 1].
+        length = int(self.lengths[index])
+        return (
+            self.input_ids[index, : length - 1].long(),
+            self.labels[index, 1:length].long(),
+        )
 
 
 class ReplayDataset(Dataset):
