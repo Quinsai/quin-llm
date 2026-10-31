@@ -5,11 +5,11 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from data_pipeline.pretrain.dataset import PretrainDataset
-from data_pipeline.sft.dataset import SFTDataset
-from data_pipeline.sft.prepare import prepare_sft
-from data_pipeline.sources import parse_sft_file
-from data_pipeline.tokenizer.bpe_tokenizer import BPETokenizer
+from pipeline.pretrain.dataset import PretrainDataset
+from pipeline.sft.dataset import SFTDataset
+from pipeline.sft.prepare import prepare_sft
+from pipeline.sources import parse_sft_file
+from pipeline.tokenizer.bpe_tokenizer import BPETokenizer
 
 
 class TestSources(unittest.TestCase):

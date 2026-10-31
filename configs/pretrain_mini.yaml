@@ -17,7 +17,7 @@ data:
   seed: 42
   sources:
     - type: file
-      path: data_pipeline/tiny_corpus.txt
+      path: pipeline/fixtures/tiny_corpus.txt
       weight: 1.0
 
 train:

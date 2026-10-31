@@ -322,6 +322,6 @@ def iter_texts_from_sources(sources: list[dict], max_chars: int | None = None) -
 
 
 def _iter_one_source(source: dict) -> Iterator[str]:
-    from data_pipeline.sources import iter_source_texts
+    from pipeline.sources import iter_source_texts
 
     yield from iter_source_texts(source)

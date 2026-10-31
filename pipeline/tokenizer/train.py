@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from config import TokenizerConfig
-from data_pipeline.tokenizer.bpe_tokenizer import BPETokenizer, iter_texts_from_sources
+from pipeline.tokenizer.bpe_tokenizer import BPETokenizer, iter_texts_from_sources
 
 
 def train_tokenizer(config: TokenizerConfig | str | Path) -> BPETokenizer:

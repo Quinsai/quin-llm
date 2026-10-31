@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from data_pipeline.sources import iter_source_texts
+from pipeline.sources import iter_source_texts
 
 
 def prepare_pretrain(cfg: dict, tokenizer) -> dict:

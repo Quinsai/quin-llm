@@ -198,13 +198,23 @@ configs/
   tokenizer_mini.yaml   mini tokenizer 配置
   pretrain_mini.yaml    mini 预训练配置
   sft_mini.yaml         mini SFT 配置
-data_pipeline/          数据处理的源代码（怎么造数据）
+pipeline/               按阶段组织的流水线代码
+  common.py             共享的 tokenizer / device / checkpoint 加载
   sources.py            本地文件 / HuggingFace 数据读取
-  tokenizer/            byte-level BPE
-  pretrain/             预训练数据预处理与 memmap dataset
-  sft/                  SFT 数据预处理与 dataset
-  tiny_corpus.txt       本地冒烟测试小语料
-  tiny_sft_message.txt  本地冒烟测试 SFT 小语料
+  fixtures/
+    tiny_corpus.txt     本地冒烟测试小语料
+    tiny_sft_message.txt 本地冒烟测试 SFT 小语料
+  tokenizer/
+    bpe_tokenizer.py    byte-level BPE
+    train.py            tokenizer 训练入口
+  pretrain/
+    prepare.py          预训练数据预处理
+    dataset.py          memmap dataset
+    train.py            预训练入口
+  sft/
+    prepare.py          SFT 数据预处理
+    dataset.py          SFT / replay dataset
+    train.py            prepare-sft 与 sft 入口
 processed_data/         运行后生成的数据产物（可重新生成）
   tokenizer/            full 训练好的 tokenizer
   pretrain/             full train.bin / val.bin
@@ -226,9 +236,9 @@ run_pipeline.sh         从指定阶段跑到 sft
 run_chat.sh             加载 checkpoint 进入 chat
 ```
 
-`data_pipeline/` 和 `processed_data/` 的分工：
+`pipeline/` 和 `processed_data/` 的分工：
 
-- `data_pipeline/` 是代码，回答“数据怎么读、怎么 tokenize、怎么构造样本”。
+- `pipeline/` 是代码，按阶段回答“数据怎么读、怎么 tokenize、怎么构造样本、怎么训练”。
 - `processed_data/` 是产物，回答“tokenizer 和 token 张量在哪里”，里面的内容由 `tokenize` / `prepare-pretrain` / `prepare-sft` 生成，可以删除后重建。
 
 ## 与旧版本的区别

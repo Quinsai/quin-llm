@@ -8,7 +8,7 @@ data:
   block_size: 128
   source:
     type: file
-    path: data_pipeline/tiny_sft_message.txt
+    path: pipeline/fixtures/tiny_sft_message.txt
 
 train:
   out_dir: checkpoints/sft_mini

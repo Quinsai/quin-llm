@@ -10,7 +10,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from data_pipeline.sources import iter_sft_examples, parse_sft_file
+from pipeline.sources import iter_sft_examples, parse_sft_file
 
 PROMPT_TEMPLATE = "###User:\n{user}\n###Agent:\n"
 

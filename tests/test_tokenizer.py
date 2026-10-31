@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from data_pipeline.tokenizer.bpe_tokenizer import BPETokenizer
+from pipeline.tokenizer.bpe_tokenizer import BPETokenizer
 
 
 class TestBPETokenizer(unittest.TestCase):

@@ -13,50 +13,23 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
 import torch
 
 from config import (
     InferenceConfig,
-    ModelConfig,
     PreparePretrainConfig,
     PrepareSFTConfig,
     PretrainConfig,
     SFTConfig,
-    SFTDataConfig,
     TokenizerConfig,
 )
-from data_pipeline.pretrain.dataset import PretrainDataset, load_pretrain_meta
-from data_pipeline.pretrain.prepare import prepare_pretrain
-from data_pipeline.sft.dataset import ReplayDataset, SFTDataset
-from data_pipeline.sft.prepare import PROMPT_TEMPLATE, prepare_sft
-from data_pipeline.tokenizer.bpe_tokenizer import BPETokenizer
-from data_pipeline.tokenizer.train import train_tokenizer
-from model.model import TinyModel
+from pipeline.common import build_model_from_checkpoint, load_tokenizer, resolve_device
+from pipeline.pretrain.train import run_prepare_pretrain, run_pretrain
+from pipeline.sft.prepare import PROMPT_TEMPLATE
+from pipeline.sft.train import run_prepare_sft, run_sft
+from pipeline.tokenizer.train import train_tokenizer
 from trainer.tiny_trainer import Trainer
-from utils.seed import set_seed
-
-
-def _load_tokenizer(path: str | Path) -> BPETokenizer:
-    tokenizer = BPETokenizer.load(path)
-    print(f"tokenizer: {path} (vocab_size={tokenizer.vocab_size})")
-    return tokenizer
-
-
-def _resolve_device(name: str | None) -> str:
-    if name:
-        return name
-    return "cuda" if torch.cuda.is_available() else "cpu"
-
-
-def _build_model_from_checkpoint(checkpoint: dict, device: str) -> TinyModel:
-    config = ModelConfig.from_dict(checkpoint["model_config"])
-    model = TinyModel(config)
-    model.load_state_dict(checkpoint["model_state"])
-    model.to(device)
-    model.eval()
-    return model
 
 
 # ----------------------------------------------------------------------
@@ -70,124 +43,25 @@ def cmd_tokenize(args) -> None:
 # pretraining
 # ----------------------------------------------------------------------
 def cmd_prepare_pretrain(args) -> None:
-    cfg = PreparePretrainConfig.from_yaml(args.config)
-    data_cfg = cfg.data
-    tokenizer = _load_tokenizer(data_cfg.tokenizer_path)
-    prepare_pretrain(data_cfg.to_dict(), tokenizer)
+    run_prepare_pretrain(PreparePretrainConfig.from_yaml(args.config))
 
 
 def cmd_pretrain(args) -> None:
-    cfg = PretrainConfig.from_yaml(args.config)
-    data_cfg = cfg.data
-    train_cfg = cfg.train
-    set_seed(train_cfg.seed)
-
-    tokenizer = _load_tokenizer(data_cfg.tokenizer_path)
-    model_cfg = cfg.model
-    if model_cfg.vocab_size != tokenizer.vocab_size:
-        print(
-            f"warning: model vocab_size={model_cfg.vocab_size} but tokenizer has "
-            f"{tokenizer.vocab_size}; using the tokenizer size"
-        )
-        model_cfg.vocab_size = tokenizer.vocab_size
-
-    meta = load_pretrain_meta(data_cfg.out_dir)
-    train_path = Path(data_cfg.out_dir) / "train.bin"
-    val_path = Path(data_cfg.out_dir) / "val.bin"
-    train_ds = PretrainDataset(
-        train_path,
-        block_size=model_cfg.block_size,
-        dtype=meta["dtype"],
-        random_windows=True,
-        seed=train_cfg.seed,
-    )
-    val_ds = (
-        PretrainDataset(
-            val_path,
-            block_size=model_cfg.block_size,
-            dtype=meta["dtype"],
-            random_windows=False,
-        )
-        if meta.get("val_tokens", 0) >= model_cfg.block_size + 1
-        else None
-    )
-    print(
-        f"pretrain tokens: train={meta['train_tokens']:,}, "
-        f"val={meta['val_tokens']:,}, block_size={model_cfg.block_size}"
-    )
-
-    model = TinyModel(model_cfg)
-    trainer = Trainer(
-        model,
-        tokenizer,
-        train_cfg,
-        tokenizer_path=data_cfg.tokenizer_path,
-    )
-    trainer.train_pretrain(train_ds, val_ds, resume_from=args.resume)
+    run_pretrain(PretrainConfig.from_yaml(args.config), resume_from=args.resume)
 
 
 # ----------------------------------------------------------------------
 # supervised fine-tuning
 # ----------------------------------------------------------------------
-def _sft_block_size(args, data_cfg: SFTDataConfig) -> int:
-    if args.ckpt:
-        checkpoint = Trainer.load_checkpoint(args.ckpt)
-        return int(checkpoint["model_config"]["block_size"])
-    return int(data_cfg.block_size)
-
-
 def cmd_prepare_sft(args) -> None:
-    cfg = PrepareSFTConfig.from_yaml(args.config)
-    data_cfg = cfg.data
-    tokenizer = _load_tokenizer(data_cfg.tokenizer_path)
-    block_size = _sft_block_size(args, data_cfg)
-    prepare_sft(data_cfg.to_dict(), tokenizer, block_size)
+    run_prepare_sft(PrepareSFTConfig.from_yaml(args.config), ckpt=args.ckpt)
 
 
 def cmd_sft(args) -> None:
-    cfg = SFTConfig.from_yaml(args.config)
-    data_cfg = cfg.data
-    train_cfg = cfg.train
-    set_seed(train_cfg.seed)
-
-    checkpoint = Trainer.load_checkpoint(args.ckpt)
-    model_cfg = ModelConfig.from_dict(checkpoint["model_config"])
-    tokenizer_path = data_cfg.tokenizer_path or checkpoint.get("tokenizer_path")
-    tokenizer = _load_tokenizer(tokenizer_path)
-    if tokenizer.vocab_size != model_cfg.vocab_size:
-        raise ValueError(
-            f"tokenizer vocab_size={tokenizer.vocab_size} does not match "
-            f"checkpoint vocab_size={model_cfg.vocab_size}"
-        )
-
-    out_dir = Path(data_cfg.out_dir)
-    train_ds = SFTDataset(out_dir / "train.pt")
-    val_ds = SFTDataset(out_dir / "val.pt") if (out_dir / "val.pt").exists() else None
-    if val_ds is not None and len(val_ds) == 0:
-        val_ds = None
-
-    replay_prob = float(data_cfg.replay_prob)
-    if replay_prob > 0:
-        pretrain_dir = Path(data_cfg.pretrain_dir)
-        replay_meta = load_pretrain_meta(pretrain_dir)
-        replay_ds = PretrainDataset(
-            pretrain_dir / "train.bin",
-            block_size=model_cfg.block_size,
-            dtype=replay_meta["dtype"],
-            random_windows=True,
-            seed=train_cfg.seed,
-        )
-        train_ds = ReplayDataset(train_ds, replay_ds, replay_prob)
-        print(f"SFT replay enabled: {replay_prob:.0%} pretrain windows")
-    print(f"SFT samples: train={len(train_ds):,}, val={len(val_ds) if val_ds else 0:,}")
-
-    model = TinyModel(model_cfg)
-    trainer = Trainer(model, tokenizer, train_cfg, tokenizer_path=tokenizer_path)
-    trainer.train_sft(
-        train_ds,
-        val_ds,
+    run_sft(
+        SFTConfig.from_yaml(args.config),
+        ckpt=args.ckpt,
         epochs=args.epochs,
-        pretrain_checkpoint=args.ckpt,
         resume_from=args.resume,
     )
 
@@ -196,13 +70,13 @@ def cmd_sft(args) -> None:
 # inference
 # ----------------------------------------------------------------------
 def _load_for_inference(cfg: InferenceConfig):
-    device = _resolve_device(cfg.device)
+    device = resolve_device(cfg.device)
     checkpoint = Trainer.load_checkpoint(cfg.ckpt, map_location="cpu")
     tokenizer_path = cfg.tokenizer or checkpoint.get("tokenizer_path")
     if not tokenizer_path:
         raise ValueError("no tokenizer path in checkpoint; pass --tokenizer")
-    tokenizer = _load_tokenizer(tokenizer_path)
-    model = _build_model_from_checkpoint(checkpoint, device)
+    tokenizer = load_tokenizer(tokenizer_path)
+    model = build_model_from_checkpoint(checkpoint, device)
     print(f"model: {model.num_parameters():,} params on {device}")
     return model, tokenizer, device
 
