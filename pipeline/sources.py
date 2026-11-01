@@ -2,13 +2,37 @@
 
 from __future__ import annotations
 
+import glob
 from pathlib import Path
 from typing import Iterator
 
 from datasets import load_dataset
 
 
+def _expand_paths(paths: str | list[str]) -> list[str]:
+    """Expand a path or glob list into concrete file paths."""
+    if isinstance(paths, str):
+        paths = [paths]
+    expanded: list[str] = []
+    for pattern in paths:
+        matches = sorted(glob.glob(str(pattern)))
+        expanded.extend(matches or [str(pattern)])
+    return expanded
+
+
 def _load_hf(source: dict):
+    """Load a dataset from the Hub, or from local parquet ``paths`` if given.
+
+    ``paths`` lets the full configs run from files downloaded by
+    ``scripts/download_data.sh`` without any Hub access on the training server.
+    """
+    if source.get("paths"):
+        return load_dataset(
+            "parquet",
+            data_files=_expand_paths(source["paths"]),
+            split=source.get("split", "train"),
+            streaming=source.get("streaming", True),
+        )
     return load_dataset(
         source["dataset"],
         source.get("config"),

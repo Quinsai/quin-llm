@@ -6,9 +6,10 @@ data:
   seed: 42
   replay_prob: 0.05
   pretrain_dir: processed_data/pretrain
+  # Local parquet files from ./scripts/download_data.sh (no Hub access needed).
   source:
-    type: hf
-    dataset: tatsu-lab/alpaca
+    type: alpaca
+    paths: data/raw/alpaca/*.parquet
     split: train
     num_examples: 52002
 

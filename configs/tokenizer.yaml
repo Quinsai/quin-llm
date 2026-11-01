@@ -4,20 +4,19 @@ vocab_size: 8192
 min_freq: 2
 max_words: 200000
 max_chars: 100000000
+# Local parquet files from ./scripts/download_data.sh (no Hub access needed).
 sources:
   - type: hf
-    dataset: roneneldan/TinyStories
-    config: null
+    paths: data/raw/tinystories/*.parquet
     split: train
     text_field: text
     weight: 0.55
   - type: hf
-    dataset: Salesforce/wikitext
-    config: wikitext-103-raw-v1
+    paths: data/raw/wikitext103/*.parquet
     split: train
     text_field: text
     weight: 0.35
   - type: alpaca
-    dataset: tatsu-lab/alpaca
+    paths: data/raw/alpaca/*.parquet
     split: train
     weight: 0.10

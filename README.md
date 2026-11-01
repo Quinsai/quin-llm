@@ -138,6 +138,9 @@ CKPT=checkpoints/sft_full/final.pt ./run_chat.sh
 也可以分步执行：
 
 ```bash
+# 0. 下载语料到 data/raw（默认走 ModelScope，服务器可直接运行；可断点续传）
+./scripts/download_data.sh
+
 # 1. 训练 tokenizer（8192 BPE）
 python main.py tokenize --config configs/tokenizer.yaml
 

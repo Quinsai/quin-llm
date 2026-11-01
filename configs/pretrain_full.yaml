@@ -15,16 +15,15 @@ data:
   max_tokens: 300000000
   val_fraction: 0.01
   seed: 42
+  # Local parquet files from ./scripts/download_data.sh (no Hub access needed).
   sources:
     - type: hf
-      dataset: roneneldan/TinyStories
-      config: null
+      paths: data/raw/tinystories/*.parquet
       split: train
       text_field: text
       weight: 0.60
     - type: hf
-      dataset: Salesforce/wikitext
-      config: wikitext-103-raw-v1
+      paths: data/raw/wikitext103/*.parquet
       split: train
       text_field: text
       weight: 0.40

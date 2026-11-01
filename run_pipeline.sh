@@ -26,6 +26,11 @@ usage() {
     cat <<'EOF'
 Usage: ./run_pipeline.sh [--start STAGE] [--end STAGE] [--mode full|mini] [--save-log true|false]
 
+Data (full mode only):
+  The full configs read local parquet files under data/raw/. Stages that need
+  them run ./scripts/download_data.sh (ModelScope, resumable) automatically
+  when data/raw/.complete is missing.
+
 start (default: pretrain):
   tokenize           train the BPE tokenizer
   prepare-pretrain   build pretrain token files
@@ -214,15 +219,26 @@ require_pretrain_ckpt() {
     fi
 }
 
+require_data() {
+    # mini mode uses pipeline/fixtures, not data/raw.
+    if [[ "$MODE" == "mini" || -f data/raw/.complete ]]; then
+        return
+    fi
+    echo "==> data/raw incomplete, running scripts/download_data.sh"
+    ./scripts/download_data.sh
+}
+
 run_phase() {
     local phase="$1"
     echo
     echo "==> $phase"
     case "$phase" in
         tokenize)
+            require_data
             "$PYTHON" main.py tokenize --config "$TOKENIZER_CONFIG"
             ;;
         prepare-pretrain)
+            require_data
             "$PYTHON" main.py prepare-pretrain --config "$PRETRAIN_CONFIG"
             ;;
         pretrain)
@@ -230,6 +246,7 @@ run_phase() {
             ;;
         prepare-sft)
             require_pretrain_ckpt
+            require_data
             "$PYTHON" main.py prepare-sft --config "$SFT_CONFIG" --ckpt "$PRETRAIN_CKPT"
             ;;
         sft)

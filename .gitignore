@@ -6,6 +6,7 @@ venv/
 .env
 
 # Generated data and checkpoints
+data/
 processed_data/
 checkpoints/
 legacy/
