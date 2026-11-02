@@ -1,0 +1,33 @@
+# OpenAI-compatible teacher endpoint.
+#
+# Credentials (first non-empty source wins):
+#   1. api_key:      literal key written directly below
+#   2. api_key_file: path to a file containing only the key
+#   3. api_key_env:  environment variable name
+#
+# The simplest setup is to fill in api_key and leave the other two empty.
+# The resolved key is never printed or written to generation logs.
+base_url: ${TEACHER_BASE_URL}
+api_key: ""
+# api_key_file: configs/teacher_key.txt
+api_key_env: TEACHER_API_KEY
+model: ${TEACHER_MODEL}
+timeout: 60
+max_retries: 5
+retry_backoff: 1.5
+concurrency: 8
+requests_per_minute: 120
+temperature: 0.8
+top_p: 0.95
+max_tokens: 256
+# Set to json_object only if the endpoint supports OpenAI-style JSON mode.
+# The generator also has robust JSON extraction for plain text responses.
+response_format: null
+# Qwen/vLLM-style thinking control.  If the endpoint rejects this field with
+# HTTP 400, remove extra_body and let the model think (slower, more tokens).
+extra_body:
+  chat_template_kwargs:
+    enable_thinking: false
+seed: 42
+price_input_per_1k: 0
+price_output_per_1k: 0

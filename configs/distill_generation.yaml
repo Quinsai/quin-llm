@@ -1,0 +1,36 @@
+# Pilot generation run: 2,000 tasks across five categories.
+#
+# Generate with:
+#   python -m distillation.run_generation \
+#     --config configs/distill_generation.yaml --dry-run --limit 5
+#   python -m distillation.run_generation \
+#     --config configs/distill_generation.yaml --limit 5 --run-id smoke
+run_id: pilot_v1
+teacher_config: configs/distill_teacher.yaml
+out_dir: data/distill/raw
+tasks_dir: data/distill/tasks
+prompt_version: v1
+seed: 42
+max_requests: null
+max_completion_tokens: null
+
+categories:
+  fact_qa:
+    count: 1000
+    seeds: distillation/seeds/train_entities.jsonl
+    difficulty: [easy, medium]
+  format_json:
+    count: 300
+    seeds: distillation/seeds/topics.jsonl
+    difficulty: [easy, medium]
+  extraction:
+    count: 200
+    seeds: distillation/seeds/topics.jsonl
+    difficulty: [easy]
+  instruction:
+    count: 300
+    seeds: distillation/seeds/topics.jsonl
+    difficulty: [easy, medium]
+  reasoning:
+    count: 200
+    difficulty: [easy]

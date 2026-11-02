@@ -1,0 +1,21 @@
+# Mix filtered teacher data with Alpaca.
+#
+# teacher_ratio is measured in answer tokens, not rows.  Alpaca 52k is kept as
+# the upper bound; the builder takes enough Alpaca rows to make teacher data
+# 50% of answer tokens.  If filtered teacher data is smaller than that, the
+# achieved ratio is reported in manifest.json.
+filtered_path: data/distill/filtered/pilot_v1.jsonl
+alpaca_paths: data/raw/alpaca/*.parquet
+tokenizer_path: processed_data/tokenizer/tokenizer.pkl
+baseline_budget: data/distill/baseline_budget.json
+out_dir: data/distill/sft/pilot_v1
+teacher_ratio: 0.5
+# Optional hard cap on total rows in the mixed pool.  null keeps all selected
+# rows (all teacher + the Alpaca rows needed for the token ratio).
+target_samples: null
+max_steps: null
+batch_size: 32
+seed: 42
+# Also write alpaca_control.parquet (same row count as the mixed pool) so the
+# "more training data" effect can be separated from the teacher effect.
+write_alpaca_control: false

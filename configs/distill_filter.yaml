@@ -1,0 +1,21 @@
+# Quality filters for teacher data.  Run this on the training server where the
+# real student tokenizer lives.
+tokenizer_path: processed_data/tokenizer/tokenizer.pkl
+block_size: 512
+eval_dir: evaluation/datasets
+eval_entity_seeds: distillation/seeds/eval_entities.jsonl
+min_instruction_chars: 3
+max_instruction_tokens: 200
+max_output_tokens: 150
+max_output_chars: 1200
+min_english_ratio: 0.8
+near_dup_threshold: 0.85
+# Pilot: 1,000 fact tasks over 38 entities is ~26 per entity, so 40 leaves
+# headroom while still preventing one entity from dominating.  For the 40k main
+# run, expand distillation/seeds/train_entities.jsonl or set this to 0.
+max_per_entity: 40
+review_fraction: 0.05
+min_review_samples: 100
+rejected_review_fraction: 0.02
+min_rejected_review: 20
+seed: 42

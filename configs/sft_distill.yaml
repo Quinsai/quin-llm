@@ -1,0 +1,44 @@
+# Mixed Alpaca + teacher SFT (template).
+#
+# IMPORTANT: use the same max_steps and early_stop_patience=null as the
+# baseline.  The recommended path is make_configs (see
+# configs/sft_baseline_controlled.yaml).  The data path below is for the pilot;
+# change it to the main run's train.parquet after filtering.
+data:
+  tokenizer_path: processed_data/tokenizer/tokenizer.pkl
+  out_dir: processed_data/sft_distill_pilot_v1
+  val_fraction: 0.02
+  seed: 42
+  replay_prob: 0.05
+  pretrain_dir: processed_data/pretrain
+  source:
+    type: alpaca
+    paths: data/distill/sft/pilot_v1/train.parquet
+    split: train
+
+train:
+  out_dir: checkpoints/sft_distill_pilot_v1
+  batch_size: 32
+  grad_accum_steps: 1
+  lr: 0.0003
+  min_lr: 0.00003
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  warmup_steps: 100
+  # Set this to baseline_budget.max_steps, or use make_configs.
+  max_steps: null
+  # Ignored when max_steps is set.
+  epochs: 2
+  eval_interval: 100
+  eval_batches: 50
+  # No early stopping: both groups must run the same number of steps.
+  early_stop_patience: null
+  min_delta: 0.0
+  save_interval: 500
+  log_interval: 20
+  amp: true
+  num_workers: 4
+  seed: 42
+  draw: true

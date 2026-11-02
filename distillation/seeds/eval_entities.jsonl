@@ -1,0 +1,18 @@
+{"entity": "Spain", "type": "country", "facts": {"capital": ["Madrid"], "continent": ["Europe"], "currency": ["euro", "EUR"], "official language": ["Spanish"]}}
+{"entity": "Portugal", "type": "country", "facts": {"capital": ["Lisbon"], "continent": ["Europe"], "currency": ["euro", "EUR"], "official language": ["Portuguese"]}}
+{"entity": "Norway", "type": "country", "facts": {"capital": ["Oslo"], "continent": ["Europe"], "currency": ["Norwegian krone", "krone"], "official language": ["Norwegian"]}}
+{"entity": "Sweden", "type": "country", "facts": {"capital": ["Stockholm"], "continent": ["Europe"], "currency": ["Swedish krona", "krona"], "official language": ["Swedish"]}}
+{"entity": "South Korea", "type": "country", "facts": {"capital": ["Seoul"], "continent": ["Asia"], "currency": ["won", "South Korean won"], "official language": ["Korean"]}}
+{"entity": "Mexico", "type": "country", "facts": {"capital": ["Mexico City"], "continent": ["North America"], "currency": ["Mexican peso", "peso"], "official language": ["Spanish"]}}
+{"entity": "Argentina", "type": "country", "facts": {"capital": ["Buenos Aires"], "continent": ["South America"], "currency": ["Argentine peso", "peso"], "official language": ["Spanish"]}}
+{"entity": "New Zealand", "type": "country", "facts": {"capital": ["Wellington"], "continent": ["Oceania"], "currency": ["New Zealand dollar"], "official language": ["English", "Māori"]}}
+{"entity": "Isaac Newton", "type": "person", "facts": {"birth year": ["1643"], "nationality": ["English"], "occupation": ["physicist", "mathematician"], "known for": ["laws of motion", "gravity"]}}
+{"entity": "Charles Darwin", "type": "person", "facts": {"birth year": ["1809"], "nationality": ["English"], "occupation": ["naturalist"], "known for": ["theory of evolution", "evolution"]}}
+{"entity": "Alan Turing", "type": "person", "facts": {"birth year": ["1912"], "nationality": ["English"], "occupation": ["mathematician", "computer scientist"], "known for": ["Turing machine", "cracking the Enigma code"]}}
+{"entity": "Rosalind Franklin", "type": "person", "facts": {"birth year": ["1920"], "nationality": ["English"], "occupation": ["chemist"], "known for": ["X-ray diffraction of DNA", "DNA structure"]}}
+{"entity": "Neil Armstrong", "type": "person", "facts": {"birth year": ["1930"], "nationality": ["American"], "occupation": ["astronaut"], "known for": ["first person on the Moon", "Moon landing"]}}
+{"entity": "Nile River", "type": "river", "facts": {"location": ["Africa"], "flows": ["north"], "known for": ["longest river"]}}
+{"entity": "Atlantic Ocean", "type": "ocean", "facts": {"location": ["between the Americas and Europe/Africa"], "known for": ["second largest ocean"], "deepest point": ["Puerto Rico Trench"]}}
+{"entity": "Saturn", "type": "planet", "facts": {"position from the Sun": ["sixth"], "type": ["gas giant"], "known for": ["ring system", "rings"]}}
+{"entity": "Venus", "type": "planet", "facts": {"position from the Sun": ["second"], "type": ["rocky planet", "terrestrial planet"], "known for": ["hottest planet", "similar size to Earth"]}}
+{"entity": "Alps", "type": "mountain range", "facts": {"location": ["Europe", "France", "Switzerland", "Italy"], "known for": ["mountain range", "skiing"]}}

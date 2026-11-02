@@ -170,6 +170,163 @@ python main.py sft --config configs/sft_full.yaml \
     --resume checkpoints/sft_full/step_500.pt
 ```
 
+## 教师蒸馏实验（Baseline vs Mixed）
+
+用 OpenAI-API-Compatible 教师（Qwen3.5）生成 SFT 数据，与 Alpaca 按 **answer
+token 50:50** 混合，训练 Mixed 模型；同一起点、同一 `max_steps` 的 Alpaca-only
+Baseline 作为对照。**不做 teacher-only SFT**。
+
+### 1. 配置教师凭证
+
+编辑 [configs/distill_teacher.yaml](configs/distill_teacher.yaml)，直接填：
+
+```yaml
+base_url: https://your-endpoint/v1
+model: qwen3.5
+api_key: "sk-..."
+```
+
+也可以把 key 放在单独文件（`api_key_file`）或环境变量（`api_key_env`）。优先级：
+`api_key` > `api_key_file` > `api_key_env`。不想改受 git 管理的文件时：
+
+```bash
+cp configs/distill_teacher.yaml configs/distill_teacher.local.yaml
+# 在 local 文件里填 api_key
+export TEACHER_CONFIG=configs/distill_teacher.local.yaml
+```
+
+本地只测 API 不需要 GPU、checkpoint 或 Alpaca 数据：
+
+```bash
+# 只打印 prompt，不发请求
+./scripts/distill/01_generate.sh --dry-run --limit 5
+
+# 1 次 ping + 1 条真实生成，写到 data/distill/raw/api_smoke.jsonl
+./scripts/distill/99_api_smoke.sh
+
+# 多测几条 / 指定类别
+./scripts/distill/99_api_smoke.sh --limit 5 --categories fact_qa,format_json
+
+# 查看原始响应（每行一条 JSON）
+head -1 data/distill/raw/api_smoke.jsonl
+```
+
+常见错误：401/403 检查 `api_key`；400 检查 `model` 名称和接口是否支持 `seed` /
+`response_format`。如果响应里有很长的 `reasoning_content`（表现为 completion
+token 远大于答案本身、请求很慢），说明 thinking 模式没关掉。多数 Qwen / vLLM
+接口要用：
+
+```yaml
+extra_body:
+  chat_template_kwargs:
+    enable_thinking: false
+```
+
+顶层 `enable_thinking: false` 可能被代理忽略。
+
+### 2. 按编号执行
+
+先进入 `quin-llm` 环境（或设置 `PYTHON` 指向该环境的解释器）：
+
+```bash
+conda activate quin-llm
+```
+
+所有步骤都在 [scripts/distill/](scripts/distill/)，默认 `RUN_ID=pilot_v1`：
+
+| 脚本 | 作用 |
+|---|---|
+| `00_preflight.sh` | 检查依赖、数据、checkpoint、API；写 `baseline_budget.json` |
+| `01_generate.sh` | 生成教师数据（默认 2,000 条 pilot） |
+| `02_filter.sh` | 规则过滤、去重、污染检查，生成 `review.csv` |
+| `03_apply_review.sh` | 把复核 CSV 的结论写回数据（不是再次审阅） |
+| `04_build_dataset.sh` | 教师数据 + Alpaca 按 token 50:50 生成 parquet |
+| `05_contamination_check.sh` | 最终训练集 vs 冻结评测集污染检查 |
+| `06_make_configs.sh` | 生成受控 Baseline / Mixed 配置 |
+| `07_train_baseline.sh` | `prepare-sft` + 训练 Baseline |
+| `08_train_mixed.sh` | `prepare-sft` + 训练 Mixed |
+| `09_eval_baseline.sh` | Baseline 评测 |
+| `10_eval_mixed.sh` | Mixed 评测 |
+| `11_compare.sh` | 生成对比报告 |
+| `12_val_loss.sh` | 预训练验证集 loss（遗忘监控） |
+| `99_api_smoke.sh` | 本地 API 连通性测试（ping + 1 条生成，不属于训练流程） |
+
+执行顺序：
+
+```bash
+./scripts/distill/00_preflight.sh
+./scripts/distill/01_generate.sh
+./scripts/distill/02_filter.sh
+
+# 人工复核：打开 data/distill/filtered/pilot_v1.review.csv
+#   model_verdict / model_notes  第一遍（模型先筛）
+#   human_verdict / human_notes  第二遍（人工确认；留空沿用上一遍）
+./scripts/distill/03_apply_review.sh   # 只把 CSV 结论写回数据
+
+./scripts/distill/04_build_dataset.sh
+./scripts/distill/05_contamination_check.sh
+./scripts/distill/06_make_configs.sh
+./scripts/distill/07_train_baseline.sh
+./scripts/distill/08_train_mixed.sh
+./scripts/distill/09_eval_baseline.sh
+./scripts/distill/10_eval_mixed.sh
+./scripts/distill/11_compare.sh
+./scripts/distill/12_val_loss.sh
+```
+
+脚本都支持追加参数，例如：
+
+```bash
+./scripts/distill/00_preflight.sh --ping
+./scripts/distill/01_generate.sh --dry-run --limit 5
+./scripts/distill/01_generate.sh --limit 5
+```
+
+> 生成只依赖 HTTP，本地和服务器都能跑。2,000 条 pilot 的 raw JSONL 约 6 MB、
+> tasks 约 0.7 MB，过滤后约 1.6 MB。如果服务器不能访问教师 API，可以在本地跑
+> `01_generate.sh`，把 `data/distill/raw/<run_id>.jsonl` 拷到服务器，再从
+> `02_filter.sh` 继续（服务器上的 tokenizer 会让长度检查更准确）。
+
+### 3. Pilot 门禁与 40k 主实验
+
+Pilot 通过条件：事实类人工复核通过率 ≥ 90%、无污染、overlong/重复比例可接受、
+Baseline/Mixed 步数一致且评测链路跑通、retention 无明显退化。
+
+通过后先把 [configs/distill_generation.yaml](configs/distill_generation.yaml) 的
+各类别 count 扩大到约 40,000，再用新的 run id 重跑同一套脚本：
+
+```bash
+export RUN_ID=main_v1
+./scripts/distill/01_generate.sh
+./scripts/distill/02_filter.sh
+# 复核并 merge
+./scripts/distill/03_apply_review.sh
+./scripts/distill/04_build_dataset.sh
+# 后续 05~12 相同
+```
+
+### 4. 可覆盖变量与关键产物
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `RUN_ID` | `pilot_v1` | 数据 / checkpoint / 报告命名 |
+| `PYTHON` | `python` | 未激活环境时指向 `quin-llm` 解释器 |
+| `TEACHER_CONFIG` | `configs/distill_teacher.yaml` | 教师凭证配置 |
+| `REPORT_DIR` | `reports` | 评测与报告输出目录 |
+| `PRETRAIN_CKPT` | `checkpoints/pretrain_full/best.pt` | SFT 起点 |
+
+```text
+data/distill/raw/<run_id>.jsonl
+data/distill/filtered/<run_id>.jsonl / .rejected.jsonl / .review.csv
+data/distill/sft/<run_id>/train.parquet / manifest.json
+configs/generated/sft_baseline_<run_id>.yaml / sft_distill_<run_id>.yaml
+checkpoints/sft_baseline_<run_id>/ / checkpoints/sft_distill_<run_id>/
+reports/eval_*_<run_id>.jsonl / distill_<run_id>.md
+```
+
+代码结构见 [distillation/](distillation/) 和 [evaluation/](evaluation/)；评测集已冻结，
+可用 `python -m evaluation.freeze_datasets --dir evaluation/datasets --check` 校验。
+
 ## 模型与数据
 
 默认 `configs/pretrain_full.yaml`：
@@ -209,6 +366,34 @@ configs/
   tokenizer_mini.yaml   mini tokenizer 配置
   pretrain_mini.yaml    mini 预训练配置
   sft_mini.yaml         mini SFT 配置
+  distill_teacher.yaml  教师 API 配置（key 可写在 YAML / 文件 / 环境变量）
+  distill_generation.yaml  教师数据生成配比
+  distill_filter.yaml   教师数据过滤阈值
+  distill_dataset.yaml  Alpaca + teacher token 混合
+  sft_baseline_controlled.yaml  受控 Baseline 模板
+  sft_distill.yaml      Mixed 模板
+  eval.yaml             冻结评测集与 greedy 解码
+  generated/            preflight/make_configs 生成的受控配置（运行时）
+distillation/           教师数据生成、过滤、复核、建集
+  seeds/                训练 / held-out 实体和主题
+  prompts.py            版本化 prompt
+  teacher_client.py     OpenAI-compatible client
+  task_builder.py       确定性任务列表
+  data_generator.py     并发生成与断点续传
+  data_filter.py        规则过滤、去重、污染检查、复核表
+  dataset_builder.py    Alpaca + teacher 混合
+  preflight.py          环境 / 数据 / 步数预检
+  make_configs.py       生成受控训练配置
+  run_*.py              各阶段 CLI
+evaluation/             冻结评测集、指标、对比和污染检查
+  datasets/             评测 JSONL + manifest + README
+  metrics.py            规则指标与统计检验
+  evaluator.py          checkpoint 推理与判分
+  run_eval.py           评测 CLI
+  compare_models.py     Baseline vs Mixed 报告
+  contamination_check.py  污染检查
+  freeze_datasets.py    评测集 hash 固化
+  val_loss.py           预训练验证集 loss / perplexity
 pipeline/               按阶段组织的流水线代码
   common.py             共享的 tokenizer / device / checkpoint 加载
   sources.py            本地文件 / HuggingFace 数据读取
@@ -233,7 +418,13 @@ processed_data/         运行后生成的数据产物（可重新生成）
   tokenizer_mini/       mini tokenizer
   pretrain_mini/        mini train.bin / val.bin
   sft_mini/             mini train.pt / val.pt
-checkpoints/            模型权重
+data/distill/           教师任务、raw 响应、过滤结果、混合 parquet（运行时）
+  tasks/               确定性任务列表
+  raw/                 教师原始响应（可断点续传）
+  filtered/            通过/拒绝数据、统计、复核 CSV
+  sft/<run_id>/        train.parquet + manifest.json
+checkpoints/            模型权重（受控实验使用独立目录）
+reports/                评测输出与 Markdown 对比报告
 log/                    运行日志（两个 shell 脚本默认写入）
 legacy/                 旧版本文件（不参与训练）
 model/
@@ -242,6 +433,7 @@ model/
 trainer/                训练循环（AMP、eval、checkpoint、日志）
 utils/                  日志、绘图、随机种子
 scripts/gpu_smoke.py    V100 冒烟测试
+scripts/distill/        教师蒸馏实验的编号步骤脚本（00~12）
 tests/                  单元测试
 main.py                 CLI 入口
 run_pipeline.sh         按 start/end 闭区间执行阶段

@@ -1,0 +1,38 @@
+{"entity": "France", "type": "country", "facts": {"capital": ["Paris"], "continent": ["Europe"], "currency": ["euro", "EUR"], "official language": ["French"]}}
+{"entity": "Japan", "type": "country", "facts": {"capital": ["Tokyo"], "continent": ["Asia"], "currency": ["yen", "Japanese yen"], "official language": ["Japanese"]}}
+{"entity": "Brazil", "type": "country", "facts": {"capital": ["Brasília", "Brasilia"], "continent": ["South America"], "currency": ["real", "Brazilian real"], "official language": ["Portuguese"]}}
+{"entity": "Egypt", "type": "country", "facts": {"capital": ["Cairo"], "continent": ["Africa"], "currency": ["Egyptian pound"], "official language": ["Arabic"]}}
+{"entity": "Canada", "type": "country", "facts": {"capital": ["Ottawa"], "continent": ["North America"], "currency": ["Canadian dollar"], "official language": ["English", "French"]}}
+{"entity": "Australia", "type": "country", "facts": {"capital": ["Canberra"], "continent": ["Australia", "Oceania"], "currency": ["Australian dollar"], "official language": ["English"]}}
+{"entity": "India", "type": "country", "facts": {"capital": ["New Delhi"], "continent": ["Asia"], "currency": ["Indian rupee", "rupee"], "official language": ["Hindi", "English"]}}
+{"entity": "Germany", "type": "country", "facts": {"capital": ["Berlin"], "continent": ["Europe"], "currency": ["euro", "EUR"], "official language": ["German"]}}
+{"entity": "Italy", "type": "country", "facts": {"capital": ["Rome"], "continent": ["Europe"], "currency": ["euro", "EUR"], "official language": ["Italian"]}}
+{"entity": "Kenya", "type": "country", "facts": {"capital": ["Nairobi"], "continent": ["Africa"], "currency": ["Kenyan shilling"], "official language": ["Swahili", "English"]}}
+{"entity": "United Kingdom", "type": "country", "facts": {"capital": ["London"], "continent": ["Europe"], "currency": ["pound sterling", "pound"], "official language": ["English"]}}
+{"entity": "China", "type": "country", "facts": {"capital": ["Beijing"], "continent": ["Asia"], "currency": ["renminbi", "yuan", "RMB"], "official language": ["Mandarin Chinese", "Mandarin"]}}
+{"entity": "Albert Einstein", "type": "person", "facts": {"birth year": ["1879"], "nationality": ["German"], "occupation": ["theoretical physicist", "physicist"], "known for": ["theory of relativity", "relativity"]}}
+{"entity": "Marie Curie", "type": "person", "facts": {"birth year": ["1867"], "nationality": ["Polish", "French"], "occupation": ["physicist", "chemist"], "known for": ["radioactivity", "Nobel Prize", "Nobel Prizes"]}}
+{"entity": "William Shakespeare", "type": "person", "facts": {"birth year": ["1564"], "nationality": ["English"], "occupation": ["playwright", "poet"], "known for": ["Romeo and Juliet", "Hamlet", "Macbeth"]}}
+{"entity": "Ada Lovelace", "type": "person", "facts": {"birth year": ["1815"], "nationality": ["English"], "occupation": ["mathematician"], "known for": ["first computer program", "computer programming"]}}
+{"entity": "Nelson Mandela", "type": "person", "facts": {"birth year": ["1918"], "nationality": ["South African"], "occupation": ["anti-apartheid leader", "president"], "known for": ["ending apartheid", "apartheid"]}}
+{"entity": "Leonardo da Vinci", "type": "person", "facts": {"birth year": ["1452"], "nationality": ["Italian"], "occupation": ["polymath", "artist", "inventor"], "known for": ["Mona Lisa", "The Last Supper"]}}
+{"entity": "Ludwig van Beethoven", "type": "person", "facts": {"birth year": ["1770"], "nationality": ["German"], "occupation": ["composer"], "known for": ["symphonies", "Symphony No. 9"]}}
+{"entity": "Amelia Earhart", "type": "person", "facts": {"birth year": ["1897"], "nationality": ["American"], "occupation": ["aviator"], "known for": ["first woman to fly solo across the Atlantic", "solo flight across the Atlantic"]}}
+{"entity": "Earth", "type": "planet", "facts": {"natural satellite": ["Moon", "the Moon"], "position from the Sun": ["third"], "known for": ["liquid water", "life"]}}
+{"entity": "Moon", "type": "natural satellite", "facts": {"orbits": ["Earth"], "cause of formation": ["collision", "giant impact"], "atmosphere": ["none", "no atmosphere"]}}
+{"entity": "Mars", "type": "planet", "facts": {"position from the Sun": ["fourth"], "nickname": ["Red Planet"], "number of moons": ["two", "2"]}}
+{"entity": "Jupiter", "type": "planet", "facts": {"position from the Sun": ["fifth"], "type": ["gas giant"], "known for": ["Great Red Spot"]}}
+{"entity": "DNA", "type": "molecule", "facts": {"structure": ["double helix"], "function": ["stores genetic information", "genetic information"], "discovered by": ["Watson and Crick", "James Watson and Francis Crick"]}}
+{"entity": "photosynthesis", "type": "process", "facts": {"input": ["sunlight", "light", "carbon dioxide", "water"], "output": ["oxygen", "glucose"], "occurs in": ["plants"]}}
+{"entity": "gravity", "type": "force", "facts": {"described by": ["Newton", "Isaac Newton"], "effect": ["objects fall", "attracts objects"], "formula": ["F = G m1 m2 / r^2", "inverse square law"]}}
+{"entity": "water", "type": "substance", "facts": {"chemical formula": ["H2O"], "freezing point": ["0 degrees Celsius", "0 °C", "32 degrees Fahrenheit", "32 °F"], "boiling point": ["100 degrees Celsius", "100 °C", "212 degrees Fahrenheit", "212 °F"]}}
+{"entity": "United Nations", "type": "organization", "facts": {"founded": ["1945"], "headquarters": ["New York City", "New York"], "purpose": ["international peace", "peace and security"]}}
+{"entity": "NASA", "type": "organization", "facts": {"founded": ["1958"], "headquarters": ["Washington, D.C.", "Washington DC"], "purpose": ["space exploration", "aeronautics and space"]}}
+{"entity": "World Health Organization", "type": "organization", "facts": {"founded": ["1948"], "headquarters": ["Geneva"], "purpose": ["public health", "international health"]}}
+{"entity": "European Union", "type": "organization", "facts": {"founded": ["1993", "Maastricht Treaty"], "headquarters": ["Brussels"], "purpose": ["economic and political union", "European integration"]}}
+{"entity": "Eiffel Tower", "type": "landmark", "facts": {"location": ["Paris", "France"], "completed": ["1889"], "designed by": ["Gustave Eiffel"]}}
+{"entity": "Great Wall of China", "type": "landmark", "facts": {"location": ["China"], "built": ["over centuries", "ancient China"], "known for": ["longest wall", "defense"]}}
+{"entity": "Amazon River", "type": "river", "facts": {"location": ["South America", "Brazil"], "known for": ["largest river by discharge", "largest by volume"], "flows into": ["Atlantic Ocean"]}}
+{"entity": "Mount Everest", "type": "mountain", "facts": {"location": ["Nepal", "China", "Himalayas"], "height": ["8,848.86 meters", "8848.86 m", "29,031.7 feet"], "known for": ["highest mountain", "highest peak"]}}
+{"entity": "Sahara Desert", "type": "desert", "facts": {"location": ["Africa", "North Africa"], "known for": ["largest hot desert"], "size": ["about 9.2 million square kilometers", "9.2 million square kilometers"]}}
+{"entity": "Pacific Ocean", "type": "ocean", "facts": {"location": ["between Asia and the Americas"], "known for": ["largest ocean", "deepest ocean"], "deepest point": ["Mariana Trench"]}}

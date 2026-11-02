@@ -1,0 +1,18 @@
+# Frozen evaluation set and greedy decoding settings.
+ckpt: checkpoints/sft_distill/best.pt
+tokenizer: null
+device: null
+eval_dir: evaluation/datasets
+out: reports/eval.jsonl
+metrics_out: null
+# Fact answers are short; JSON/extraction/retention need room.
+max_new_tokens_fact: 24
+max_new_tokens_open: 200
+temperature: 0.0
+top_k: null
+top_p: null
+repetition_penalty: 1.0
+limit: null
+categories: null
+splits: null
+seed: 42

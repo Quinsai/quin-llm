@@ -1,0 +1,52 @@
+# Controlled Alpaca-only baseline (template).
+#
+# IMPORTANT: for a fair comparison with sft_distill.yaml, both runs must use the
+# same max_steps and early_stop_patience=null.  Do not run this template
+# directly if you have not checked the step count.  The recommended path is:
+#
+#   python -m distillation.preflight
+#   python -m distillation.make_configs --run-id pilot_v1 \
+#       --mixed-data data/distill/sft/pilot_v1/train.parquet
+#   python main.py prepare-sft --config configs/generated/sft_baseline_pilot_v1.yaml \
+#       --ckpt checkpoints/pretrain_full/best.pt
+#
+# This file remains useful as a readable reference for the shared hyperparameters.
+data:
+  tokenizer_path: processed_data/tokenizer/tokenizer.pkl
+  out_dir: processed_data/sft_baseline_controlled
+  val_fraction: 0.02
+  seed: 42
+  replay_prob: 0.05
+  pretrain_dir: processed_data/pretrain
+  source:
+    type: alpaca
+    paths: data/raw/alpaca/*.parquet
+    split: train
+    num_examples: 52002
+
+train:
+  out_dir: checkpoints/sft_baseline_controlled
+  batch_size: 32
+  grad_accum_steps: 1
+  lr: 0.0003
+  min_lr: 0.00003
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  warmup_steps: 100
+  # Set this to baseline_budget.max_steps, or use make_configs.
+  max_steps: null
+  # Ignored when max_steps is set.
+  epochs: 2
+  eval_interval: 100
+  eval_batches: 50
+  # No early stopping: both groups must run the same number of steps.
+  early_stop_patience: null
+  min_delta: 0.0
+  save_interval: 500
+  log_interval: 20
+  amp: true
+  num_workers: 4
+  seed: 42
+  draw: true

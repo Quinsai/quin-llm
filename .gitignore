@@ -21,3 +21,7 @@ log/
 .idea/
 .vscode/
 .DS_Store
+
+# Local secrets (e.g. configs/distill_teacher.local.yaml, configs/teacher_key.txt)
+configs/*.local.yaml
+configs/teacher_key.txt
