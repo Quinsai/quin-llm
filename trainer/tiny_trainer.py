@@ -71,6 +71,7 @@ class Trainer:
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.train_history: list[dict] = []
         self.val_history: list[dict] = []
+        self.evals_without_improvement = 0
 
         print(
             f"trainer: device={self.device}, amp={self.use_amp}, "
@@ -169,6 +170,7 @@ class Trainer:
                 "scaler_state": self.scaler.state_dict() if self.use_amp else None,
                 "step": int(step),
                 "val_loss": val_loss,
+                "evals_without_improvement": int(self.evals_without_improvement),
                 "model_config": model_config,
                 "tokenizer_path": self.tokenizer_path,
                 "vocab_size": self.tokenizer.vocab_size,
@@ -221,6 +223,9 @@ class Trainer:
             self.optimizer.load_state_dict(checkpoint["optimizer_state"])
         if self.use_amp and checkpoint.get("scaler_state"):
             self.scaler.load_state_dict(checkpoint["scaler_state"])
+        self.evals_without_improvement = int(
+            checkpoint.get("evals_without_improvement", 0)
+        )
         return int(checkpoint.get("step", 0))
 
     # ------------------------------------------------------------------
@@ -240,11 +245,21 @@ class Trainer:
         accum_loss = 0.0
         tokens_seen = 0
         best_val = float("inf")
+        best_step = start_step
         best_path = self.out_dir / "best.pt"
         if start_step > 0 and best_path.exists():
             previous = self.load_checkpoint(best_path)
             if previous.get("val_loss") is not None:
                 best_val = float(previous["val_loss"])
+                best_step = int(previous.get("step", start_step))
+        patience = self.cfg.early_stop_patience
+        if patience is not None and patience <= 0:
+            patience = None
+        min_delta = float(self.cfg.min_delta or 0.0)
+        evals_without_improvement = (
+            self.evals_without_improvement if start_step > 0 else 0
+        )
+        stop_training = False
         start_time = time.time()
 
         logger = CSVLogger(
@@ -261,7 +276,7 @@ class Trainer:
             **progress_kwargs(),
         )
         try:
-            while step < max_steps:
+            while step < max_steps and not stop_training:
                 for batch in train_loader:
                     x, y = self._to_device(batch)
                     with self._autocast():
@@ -327,15 +342,30 @@ class Trainer:
                         self.val_history.append(
                             {"step": step, "val_loss": val_loss}
                         )
-                        if val_loss < best_val:
+                        if val_loss < best_val - min_delta:
                             best_val = val_loss
+                            best_step = step
+                            evals_without_improvement = 0
+                            self.evals_without_improvement = 0
                             self.save_checkpoint(self.out_dir / "best.pt", step, val_loss)
+                        else:
+                            evals_without_improvement += 1
+                            self.evals_without_improvement = evals_without_improvement
                         self.model.train()
+
+                        if patience is not None and evals_without_improvement >= patience:
+                            progress_write(
+                                pbar,
+                                f"[{tag}] early stop at step {step}: val_loss did "
+                                f"not improve for {patience} evaluations "
+                                f"(best {best_val:.4f} at step {best_step})",
+                            )
+                            stop_training = True
 
                     if self.cfg.save_interval and step % self.cfg.save_interval == 0:
                         self.save_checkpoint(self.out_dir / f"step_{step}.pt", step)
 
-                    if step >= max_steps:
+                    if stop_training or step >= max_steps:
                         break
         finally:
             pbar.close()

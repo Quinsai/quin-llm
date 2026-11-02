@@ -3,8 +3,8 @@ model:
   # vocab_size comes from data.tokenizer_path at runtime.
   block_size: 512
   n_layer: 6
-  n_embd: 384
-  n_head: 6
+  n_embd: 512
+  n_head: 8
   dropout: 0.1
   tie_weights: true
   use_sdpa: true
@@ -30,7 +30,7 @@ data:
 
 train:
   out_dir: checkpoints/pretrain_full
-  batch_size: 64
+  batch_size: 128
   grad_accum_steps: 1
   lr: 0.0006
   min_lr: 0.00006
@@ -43,6 +43,9 @@ train:
   epochs: null
   eval_interval: 250
   eval_batches: 50
+  # Stop after this many evaluations without val_loss improvement; null disables.
+  early_stop_patience: 10
+  min_delta: 0.0
   save_interval: 1000
   log_interval: 20
   amp: true

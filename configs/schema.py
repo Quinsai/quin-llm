@@ -54,6 +54,8 @@ class TrainConfig:
     epochs: int | None = None
     eval_interval: int = 250
     eval_batches: int = 50
+    early_stop_patience: int | None = None
+    min_delta: float = 0.0
     save_interval: int = 1_000
     log_interval: int = 20
     amp: bool = True

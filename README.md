@@ -193,6 +193,7 @@ python main.py sft --config configs/sft_full.yaml \
 - SFT 先 tokenize 整段对话，再按 token 把 prompt 部分的 label 置为 `-100`
 - V100 使用 fp16 + `GradScaler`（V100 不支持 bf16）
 - AdamW + cosine schedule + warmup + grad clip
+- 早停：`early_stop_patience` 为连续多少次评估 `val_loss` 无提升后停止，`null` 表示关闭；`min_delta` 是最小改善量
 - checkpoint 保存完整 `model_config`、optimizer、step、tokenizer 路径
 
 ## 目录结构

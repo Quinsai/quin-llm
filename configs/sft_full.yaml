@@ -28,6 +28,9 @@ train:
   epochs: 2
   eval_interval: 100
   eval_batches: 50
+  # Stop after this many evaluations without val_loss improvement; null disables.
+  early_stop_patience: 10
+  min_delta: 0.0
   save_interval: 500
   log_interval: 20
   amp: true
