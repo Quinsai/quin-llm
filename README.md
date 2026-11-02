@@ -141,13 +141,13 @@ CKPT=checkpoints/sft_full/final.pt ./run_chat.sh
 # 0. 下载语料到 data/raw（默认走 ModelScope，服务器可直接运行；可断点续传）
 ./scripts/download_data.sh
 
-# 1. 训练 tokenizer（8192 BPE）
+# 1. 训练 tokenizer（16384 BPE）
 python main.py tokenize --config configs/tokenizer.yaml
 
 # 2. 预处理预训练语料（TinyStories + wikitext-103）
 python main.py prepare-pretrain --config configs/pretrain_full.yaml
 
-# 3. 预训练（约 14M 参数）
+# 3. 预训练（约 27M 参数）
 python main.py pretrain --config configs/pretrain_full.yaml
 
 # 4. 预处理 Alpaca 指令数据（token-level answer mask）
@@ -178,11 +178,11 @@ python main.py sft --config configs/sft_full.yaml \
 |---|---|
 | 结构 | Pre-LN decoder-only Transformer |
 | 层数 | 6 |
-| hidden | 384 |
-| heads | 6 |
+| hidden | 512 |
+| heads | 8 |
 | context | 512 |
-| vocab | 8192（byte-level BPE） |
-| 参数量 | 约 14M |
+| vocab | 16384（byte-level BPE） |
+| 参数量 | 约 27.5M（非嵌入约 18.9M） |
 | 预训练数据 | TinyStories 60% + wikitext-103 40% |
 | SFT 数据 | Alpaca 52k |
 
@@ -192,7 +192,7 @@ python main.py sft --config configs/sft_full.yaml \
 - 预训练使用随机窗口，文档之间插入 BOS/EOS
 - SFT 先 tokenize 整段对话，再按 token 把 prompt 部分的 label 置为 `-100`
 - V100 使用 fp16 + `GradScaler`（V100 不支持 bf16）
-- AdamW + cosine schedule + warmup + grad clip
+- AdamW + cosine schedule + warmup + grad clip；full 配置下预训练 `batch_size=128, lr=6e-3`，SFT `batch_size=32, lr=3e-4`
 - 早停：`early_stop_patience` 为连续多少次评估 `val_loss` 无提升后停止，`null` 表示关闭；`min_delta` 是最小改善量
 - checkpoint 保存完整 `model_config`、optimizer、step、tokenizer 路径
 
@@ -264,6 +264,6 @@ run_chat.sh             加载 checkpoint 进入 chat
 
 ## 已知限制
 
-- 14M 参数的模型容量有限，适合简单英文叙事和短指令，不适合复杂推理或知识问答。
+- 约 27M 参数的模型容量有限，适合简单英文叙事和短指令，不适合复杂推理或知识问答。
 - 默认输出英文；如果要中文，需要替换为中文预训练/SFT 语料并重新训练 tokenizer。
 - `datasets` 首次运行会从 HuggingFace 下载数据，服务器需要能访问外网。
