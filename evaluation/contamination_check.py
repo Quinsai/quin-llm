@@ -11,7 +11,7 @@ because several of their subjects are generic words ("gold", "1984").
 
 Example:
     python -m evaluation.contamination_check \
-        --train data/distill/sft/pilot_v1/train.parquet \
+        --train data/distill/sft/distill_v1/train.parquet \
         --eval evaluation/datasets
 """
 

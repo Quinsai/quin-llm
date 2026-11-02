@@ -10,14 +10,14 @@ Workflow:
 
 Examples:
     python -m distillation.run_review sample \
-        --filtered data/distill/filtered/pilot_v1.jsonl \
-        --rejected data/distill/filtered/pilot_v1.rejected.jsonl \
-        --out data/distill/filtered/pilot_v1.review.csv
+        --filtered data/distill/filtered/distill_v1.jsonl \
+        --rejected data/distill/filtered/distill_v1.rejected.jsonl \
+        --out data/distill/filtered/distill_v1.review.csv
     python -m distillation.run_review merge \
-        --filtered data/distill/filtered/pilot_v1.jsonl \
-        --rejected data/distill/filtered/pilot_v1.rejected.jsonl \
-        --review data/distill/filtered/pilot_v1.review.csv \
-        --out data/distill/filtered/pilot_v1.reviewed.jsonl
+        --filtered data/distill/filtered/distill_v1.jsonl \
+        --rejected data/distill/filtered/distill_v1.rejected.jsonl \
+        --review data/distill/filtered/distill_v1.review.csv \
+        --out data/distill/filtered/distill_v1.reviewed.jsonl
 """
 
 from __future__ import annotations

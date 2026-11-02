@@ -2,8 +2,8 @@
 
 Examples:
     python -m distillation.run_filter \
-        --raw data/distill/raw/pilot_v1.jsonl \
-        --out data/distill/filtered/pilot_v1.jsonl
+        --raw data/distill/raw/distill_v1.jsonl \
+        --out data/distill/filtered/distill_v1.jsonl
     python -m distillation.run_filter \
         --raw data/distill/raw/smoke.jsonl \
         --out data/distill/filtered/smoke.jsonl --limit 50 --no-contamination

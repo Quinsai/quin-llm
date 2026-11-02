@@ -187,13 +187,15 @@ api_key: "sk-..."
 ```
 
 也可以把 key 放在单独文件（`api_key_file`）或环境变量（`api_key_env`）。优先级：
-`api_key` > `api_key_file` > `api_key_env`。不想改受 git 管理的文件时：
+`api_key` > `api_key_file` > `api_key_env`。不想把 key 写进受 git 管理的文件时，把
+key 放进 `configs/teacher_key.txt`（已在 `.gitignore`），再在
+`configs/distill_teacher.yaml` 里写：
 
-```bash
-cp configs/distill_teacher.yaml configs/distill_teacher.local.yaml
-# 在 local 文件里填 api_key
-export TEACHER_CONFIG=configs/distill_teacher.local.yaml
+```yaml
+api_key_file: configs/teacher_key.txt
 ```
+
+教师配置的路径由 `configs/distill_generation.yaml` 的 `teacher_config:` 指定。
 
 本地只测 API 不需要 GPU、checkpoint 或 Alpaca 数据：
 
@@ -232,12 +234,13 @@ extra_body:
 conda activate quin-llm
 ```
 
-所有步骤都在 [scripts/distill/](scripts/distill/)，默认 `RUN_ID=pilot_v1`：
+所有步骤都在 [scripts/distill/](scripts/distill/)。运行参数全部来自
+[configs/](configs/) 下的 YAML，脚本本身没有 pilot/main、2k/40k 之类的开关：
 
 | 脚本 | 作用 |
 |---|---|
 | `00_preflight.sh` | 检查依赖、数据、checkpoint、API；写 `baseline_budget.json` |
-| `01_generate.sh` | 生成教师数据（默认 2,000 条 pilot） |
+| `01_generate.sh` | 按 `configs/distill_generation.yaml` 生成教师数据 |
 | `02_filter.sh` | 规则过滤、去重、污染检查，生成 `review.csv` |
 | `03_apply_review.sh` | 把复核 CSV 的结论写回数据（不是再次审阅） |
 | `04_build_dataset.sh` | 教师数据 + Alpaca 按 token 50:50 生成 parquet |
@@ -258,7 +261,7 @@ conda activate quin-llm
 ./scripts/distill/01_generate.sh
 ./scripts/distill/02_filter.sh
 
-# 人工复核：打开 data/distill/filtered/pilot_v1.review.csv
+# 人工复核：打开 data/distill/filtered/distill_v1.review.csv
 #   model_verdict / model_notes  第一遍（模型先筛）
 #   human_verdict / human_notes  第二遍（人工确认；留空沿用上一遍）
 ./scripts/distill/03_apply_review.sh   # 只把 CSV 结论写回数据
@@ -279,41 +282,61 @@ conda activate quin-llm
 ```bash
 ./scripts/distill/00_preflight.sh --ping
 ./scripts/distill/01_generate.sh --dry-run --limit 5
-./scripts/distill/01_generate.sh --limit 5
+./scripts/distill/01_generate.sh --limit 20
 ```
 
-> 生成只依赖 HTTP，本地和服务器都能跑。2,000 条 pilot 的 raw JSONL 约 6 MB、
-> tasks 约 0.7 MB，过滤后约 1.6 MB。如果服务器不能访问教师 API，可以在本地跑
-> `01_generate.sh`，把 `data/distill/raw/<run_id>.jsonl` 拷到服务器，再从
-> `02_filter.sh` 继续（服务器上的 tokenizer 会让长度检查更准确）。
+> 生成只依赖 HTTP，本地和服务器都能跑。2,000 条 raw JSONL 约 6 MB；任务清单按
+> YAML 里的全量 counts 生成（约 13 MB），`--limit` 只限制实际请求数。如果服务器
+> 不能访问教师 API，可以在本地跑 `01_generate.sh`，把
+> `data/distill/raw/<run_id>.jsonl` 拷到服务器，再从 `02_filter.sh` 继续
+> （服务器上的 tokenizer 会让长度检查更准确）。
 
-### 3. Pilot 门禁与 40k 主实验
+### 3. 调整规模
 
-Pilot 通过条件：事实类人工复核通过率 ≥ 90%、无污染、overlong/重复比例可接受、
-Baseline/Mixed 步数一致且评测链路跑通、retention 无明显退化。
+所有规模参数都在 [configs/distill_generation.yaml](configs/distill_generation.yaml)：
 
-通过后先把 [configs/distill_generation.yaml](configs/distill_generation.yaml) 的
-各类别 count 扩大到约 40,000，再用新的 run id 重跑同一套脚本：
-
-```bash
-export RUN_ID=main_v1
-./scripts/distill/01_generate.sh
-./scripts/distill/02_filter.sh
-# 复核并 merge
-./scripts/distill/03_apply_review.sh
-./scripts/distill/04_build_dataset.sh
-# 后续 05~12 相同
+```yaml
+run_id: distill_v1
+categories:
+  fact_qa:
+    count: 20000
+  format_json:
+    count: 6000
+  extraction:
+    count: 4000
+  instruction:
+    count: 6000
+  reasoning:
+    count: 4000
 ```
 
-### 4. 可覆盖变量与关键产物
+- 先小跑验证：`./scripts/distill/01_generate.sh --limit 2000`，不改 YAML。
+- 跑全量：直接 `./scripts/distill/01_generate.sh`。
+- 换实验：改 `run_id`（以及 counts）。后续 `02`~`12` 会自动使用新的
+  `data/distill/**/<run_id>*` 和 `checkpoints/*_<run_id>/`。
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `RUN_ID` | `pilot_v1` | 数据 / checkpoint / 报告命名 |
-| `PYTHON` | `python` | 未激活环境时指向 `quin-llm` 解释器 |
-| `TEACHER_CONFIG` | `configs/distill_teacher.yaml` | 教师凭证配置 |
-| `REPORT_DIR` | `reports` | 评测与报告输出目录 |
-| `PRETRAIN_CKPT` | `checkpoints/pretrain_full/best.pt` | SFT 起点 |
+如果先跑了 `--limit 2000`，之后又补跑全量，需要从 `02_filter.sh` 重新执行，
+因为 filtered/reviewed/parquet 都是基于当时的 raw 生成的。
+
+过滤阈值和人工复核比例在 [configs/distill_filter.yaml](configs/distill_filter.yaml)；
+Alpaca/teacher 的 token 比例在 [configs/distill_dataset.yaml](configs/distill_dataset.yaml)。
+`fact_qa` 的 `count` 很大时，`max_per_entity` 会限制每个实体的保留条数；想保留更多
+fact 数据，扩充 `distillation/seeds/train_entities.jsonl`，或把 `max_per_entity` 设为 `0`。
+
+### 4. 配置文件与关键产物
+
+| 配置文件 | 内容 |
+|---|---|
+| `configs/distill_teacher.yaml` | 教师 endpoint / key / model |
+| `configs/distill_generation.yaml` | `run_id`、各类别条数、输出目录 |
+| `configs/distill_filter.yaml` | 长度、去重、污染、实体上限、复核抽样 |
+| `configs/distill_dataset.yaml` | Alpaca/teacher token 比例、随机种子 |
+| `configs/eval.yaml` | 冻结评测集与 greedy 解码 |
+
+流水线脚本只需要 `PYTHON` 一个环境变量（默认 `python`；未激活环境时指向
+quin-llm 解释器；`99_api_smoke.sh` 另有 `SMOKE_RUN_ID`）。
+
+产物（`<run_id>` 取自 `configs/distill_generation.yaml`）：
 
 ```text
 data/distill/raw/<run_id>.jsonl
@@ -367,7 +390,7 @@ configs/
   pretrain_mini.yaml    mini 预训练配置
   sft_mini.yaml         mini SFT 配置
   distill_teacher.yaml  教师 API 配置（key 可写在 YAML / 文件 / 环境变量）
-  distill_generation.yaml  教师数据生成配比
+  distill_generation.yaml  教师数据生成（run_id、类别条数）
   distill_filter.yaml   教师数据过滤阈值
   distill_dataset.yaml  Alpaca + teacher token 混合
   sft_baseline_controlled.yaml  受控 Baseline 模板

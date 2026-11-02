@@ -10,11 +10,12 @@ max_output_tokens: 150
 max_output_chars: 1200
 min_english_ratio: 0.8
 near_dup_threshold: 0.85
-# Pilot: 1,000 fact tasks over 38 entities is ~26 per entity, so 40 leaves
-# headroom while still preventing one entity from dominating.  For the 40k main
-# run, expand distillation/seeds/train_entities.jsonl or set this to 0.
+# Per-entity cap prevents one seed entity from dominating.  The 38 training
+# entities make 20k fact tasks very repetitive; expand the seed file or set
+# this to 0 only if you accept that repetition.
 max_per_entity: 40
-review_fraction: 0.05
+# 0.5% of a full run is about 100-200 rows for manual review.
+review_fraction: 0.005
 min_review_samples: 100
 rejected_review_fraction: 0.02
 min_rejected_review: 20

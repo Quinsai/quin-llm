@@ -5,8 +5,7 @@ set -euo pipefail
 source "$(dirname "$0")/_env.sh"
 
 "$PYTHON" -m distillation.run_build_dataset \
-    --config configs/distill_dataset.yaml \
+    --config "$DATASET_CONFIG" \
     --filtered "$REVIEWED" \
     --out "$DATASET_DIR" \
-    --baseline-budget data/distill/baseline_budget.json \
     "$@"

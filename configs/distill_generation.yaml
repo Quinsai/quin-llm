@@ -1,11 +1,11 @@
-# Pilot generation run: 2,000 tasks across five categories.
+# Teacher data generation. This YAML is the single source of truth for the
+# run id, category counts, and output directories.  The scripts do not have a
+# separate pilot/main or 2k/40k switch: edit this file instead.
 #
-# Generate with:
-#   python -m distillation.run_generation \
-#     --config configs/distill_generation.yaml --dry-run --limit 5
-#   python -m distillation.run_generation \
-#     --config configs/distill_generation.yaml --limit 5 --run-id smoke
-run_id: pilot_v1
+#   ./scripts/distill/01_generate.sh              # full run (counts below)
+#   ./scripts/distill/01_generate.sh --limit 20   # small test, same tasks
+#   ./scripts/distill/01_generate.sh --dry-run --limit 5
+run_id: distill_v1
 teacher_config: configs/distill_teacher.yaml
 out_dir: data/distill/raw
 tasks_dir: data/distill/tasks
@@ -16,21 +16,21 @@ max_completion_tokens: null
 
 categories:
   fact_qa:
-    count: 1000
+    count: 20000
     seeds: distillation/seeds/train_entities.jsonl
     difficulty: [easy, medium]
   format_json:
-    count: 300
+    count: 6000
     seeds: distillation/seeds/topics.jsonl
     difficulty: [easy, medium]
   extraction:
-    count: 200
+    count: 4000
     seeds: distillation/seeds/topics.jsonl
     difficulty: [easy]
   instruction:
-    count: 300
+    count: 6000
     seeds: distillation/seeds/topics.jsonl
     difficulty: [easy, medium]
   reasoning:
-    count: 200
+    count: 4000
     difficulty: [easy]

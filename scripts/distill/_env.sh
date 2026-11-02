@@ -1,19 +1,43 @@
 #!/usr/bin/env bash
-# Shared defaults for scripts/distill/*.sh. Override with environment variables:
-#   RUN_ID, PYTHON, TEACHER_CONFIG, REPORT_DIR, PRETRAIN_CKPT
+# Shared paths for scripts/distill/*.sh.
 #
-# Each numbered script sources this file and then runs one pipeline step.
+# Experiment settings live in configs/*.yaml.  The run id, teacher config, and
+# generation output directories are read from configs/distill_generation.yaml,
+# so changing the run only requires editing that YAML.  PYTHON may still be
+# overridden to point at the quin-llm interpreter.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 PYTHON="${PYTHON:-python}"
-RUN_ID="${RUN_ID:-pilot_v1}"
-TEACHER_CONFIG="${TEACHER_CONFIG:-configs/distill_teacher.yaml}"
-REPORT_DIR="${REPORT_DIR:-reports}"
-PRETRAIN_CKPT="${PRETRAIN_CKPT:-checkpoints/pretrain_full/best.pt}"
+GENERATION_CONFIG="configs/distill_generation.yaml"
+FILTER_CONFIG="configs/distill_filter.yaml"
+DATASET_CONFIG="configs/distill_dataset.yaml"
+EVAL_CONFIG="configs/eval.yaml"
+REPORT_DIR="reports"
+PRETRAIN_CKPT="checkpoints/pretrain_full/best.pt"
 
-RAW_DIR="data/distill/raw"
+_gen_meta="$(
+    "$PYTHON" - "$GENERATION_CONFIG" <<'PY'
+import sys
+
+from config import DistillGenerationConfig
+
+cfg = DistillGenerationConfig.from_yaml(sys.argv[1])
+print("\t".join([cfg.run_id, cfg.teacher_config, cfg.out_dir, cfg.tasks_dir]))
+PY
+)" || {
+    echo "error: failed to read $GENERATION_CONFIG" >&2
+    return 1
+}
+
+IFS=$'\t' read -r RUN_ID TEACHER_CONFIG RAW_DIR TASKS_DIR <<< "$_gen_meta"
+
+if [[ -z "${RUN_ID:-}" ]]; then
+    echo "error: run_id is empty in $GENERATION_CONFIG" >&2
+    return 1
+fi
+
 FILTERED_DIR="data/distill/filtered"
 DATASET_DIR="data/distill/sft/${RUN_ID}"
 

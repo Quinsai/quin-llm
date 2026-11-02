@@ -5,9 +5,9 @@
 # directly if you have not checked the step count.  The recommended path is:
 #
 #   python -m distillation.preflight
-#   python -m distillation.make_configs --run-id pilot_v1 \
-#       --mixed-data data/distill/sft/pilot_v1/train.parquet
-#   python main.py prepare-sft --config configs/generated/sft_baseline_pilot_v1.yaml \
+#   python -m distillation.make_configs --run-id distill_v1 \
+#       --mixed-data data/distill/sft/distill_v1/train.parquet
+#   python main.py prepare-sft --config configs/generated/sft_baseline_distill_v1.yaml \
 #       --ckpt checkpoints/pretrain_full/best.pt
 #
 # This file remains useful as a readable reference for the shared hyperparameters.

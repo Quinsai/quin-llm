@@ -7,7 +7,7 @@ source "$(dirname "$0")/_env.sh"
 "$PYTHON" -m distillation.run_filter \
     --raw "$RAW" \
     --out "$FILTERED" \
-    --config configs/distill_filter.yaml \
+    --config "$FILTER_CONFIG" \
     --rejected-out "$REJECTED" \
     --stats-out "$STATS" \
     --review-out "$REVIEW" \

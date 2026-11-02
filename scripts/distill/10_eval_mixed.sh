@@ -5,7 +5,7 @@ source "$(dirname "$0")/_env.sh"
 
 mkdir -p "$REPORT_DIR"
 "$PYTHON" -m evaluation.run_eval \
-    --config configs/eval.yaml \
+    --config "$EVAL_CONFIG" \
     --ckpt "$MIXED_CKPT" \
     --out "$MIXED_EVAL" \
     "$@"

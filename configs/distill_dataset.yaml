@@ -4,11 +4,13 @@
 # the upper bound; the builder takes enough Alpaca rows to make teacher data
 # 50% of answer tokens.  If filtered teacher data is smaller than that, the
 # achieved ratio is reported in manifest.json.
-filtered_path: data/distill/filtered/pilot_v1.jsonl
+# 04_build_dataset.sh overrides filtered_path/out_dir with the run id from
+# configs/distill_generation.yaml; the values below are for standalone runs.
+filtered_path: data/distill/filtered/distill_v1.jsonl
 alpaca_paths: data/raw/alpaca/*.parquet
 tokenizer_path: processed_data/tokenizer/tokenizer.pkl
 baseline_budget: data/distill/baseline_budget.json
-out_dir: data/distill/sft/pilot_v1
+out_dir: data/distill/sft/distill_v1
 teacher_ratio: 0.5
 # Optional hard cap on total rows in the mixed pool.  null keeps all selected
 # rows (all teacher + the Alpaca rows needed for the token ratio).

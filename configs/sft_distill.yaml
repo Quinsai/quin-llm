@@ -2,22 +2,22 @@
 #
 # IMPORTANT: use the same max_steps and early_stop_patience=null as the
 # baseline.  The recommended path is make_configs (see
-# configs/sft_baseline_controlled.yaml).  The data path below is for the pilot;
-# change it to the main run's train.parquet after filtering.
+# configs/sft_baseline_controlled.yaml).  make_configs rewrites these paths
+# from the run id in configs/distill_generation.yaml.
 data:
   tokenizer_path: processed_data/tokenizer/tokenizer.pkl
-  out_dir: processed_data/sft_distill_pilot_v1
+  out_dir: processed_data/sft_distill_distill_v1
   val_fraction: 0.02
   seed: 42
   replay_prob: 0.05
   pretrain_dir: processed_data/pretrain
   source:
     type: alpaca
-    paths: data/distill/sft/pilot_v1/train.parquet
+    paths: data/distill/sft/distill_v1/train.parquet
     split: train
 
 train:
-  out_dir: checkpoints/sft_distill_pilot_v1
+  out_dir: checkpoints/sft_distill_distill_v1
   batch_size: 32
   grad_accum_steps: 1
   lr: 0.0003

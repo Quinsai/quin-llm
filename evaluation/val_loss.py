@@ -8,7 +8,7 @@ two numbers alongside the behavioral evaluation.
 
 Example:
     python -m evaluation.val_loss \
-        --ckpt checkpoints/sft_distill_pilot_v1/best.pt \
+        --ckpt checkpoints/sft_distill_distill_v1/best.pt \
         --data-dir processed_data/pretrain \
         --batches 100 --json-out reports/val_loss_mixed.json
 """

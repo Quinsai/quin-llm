@@ -4,7 +4,7 @@ Examples:
     python -m distillation.run_generation \
         --config configs/distill_generation.yaml --dry-run --limit 5
     python -m distillation.run_generation \
-        --config configs/distill_generation.yaml --limit 5 --run-id smoke
+        --config configs/distill_generation.yaml --limit 20
     python -m distillation.run_generation \
         --config configs/distill_generation.yaml
 """

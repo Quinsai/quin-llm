@@ -8,8 +8,8 @@ disable early stopping; otherwise the comparison confounds "teacher data" with
 Example:
     python -m distillation.make_configs \
         --budget data/distill/baseline_budget.json \
-        --run-id pilot_v1 \
-        --mixed-data data/distill/sft/pilot_v1/train.parquet
+        --run-id distill_v1 \
+        --mixed-data data/distill/sft/distill_v1/train.parquet
 """
 
 from __future__ import annotations
@@ -152,9 +152,9 @@ def main() -> None:
     parser.add_argument("--budget", default="data/distill/baseline_budget.json")
     parser.add_argument("--base", default="configs/sft_full.yaml")
     parser.add_argument("--out-dir", default="configs/generated")
-    parser.add_argument("--run-id", default="pilot_v1")
+    parser.add_argument("--run-id", default="distill_v1")
     parser.add_argument(
-        "--mixed-data", default="data/distill/sft/pilot_v1/train.parquet"
+        "--mixed-data", default="data/distill/sft/distill_v1/train.parquet"
     )
     parser.add_argument("--alpaca-control", default=None)
     parser.add_argument("--max-steps", type=int, default=None)

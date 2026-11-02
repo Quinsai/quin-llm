@@ -4,8 +4,8 @@ Examples:
     python -m distillation.run_build_dataset \
         --config configs/distill_dataset.yaml
     python -m distillation.run_build_dataset \
-        --filtered data/distill/filtered/pilot_v1.jsonl \
-        --out data/distill/sft/pilot_v1 --teacher-ratio 0.5
+        --filtered data/distill/filtered/distill_v1.jsonl \
+        --out data/distill/sft/distill_v1 --teacher-ratio 0.5
 """
 
 from __future__ import annotations

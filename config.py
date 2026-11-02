@@ -212,7 +212,7 @@ class TeacherConfig(_StageConfig):
 class DistillGenerationConfig(_StageConfig):
     """Task-driven synthetic data generation settings."""
 
-    run_id: str = "pilot_v1"
+    run_id: str = "distill_v1"
     teacher_config: str = "configs/distill_teacher.yaml"
     out_dir: str = "data/distill/raw"
     tasks_dir: str = "data/distill/tasks"
@@ -253,7 +253,7 @@ class DatasetBuildConfig(_StageConfig):
     alpaca_paths: str = "data/raw/alpaca/*.parquet"
     tokenizer_path: str = "processed_data/tokenizer/tokenizer.pkl"
     baseline_budget: str = "data/distill/baseline_budget.json"
-    out_dir: str = "data/distill/sft/pilot_v1"
+    out_dir: str = "data/distill/sft/distill_v1"
     teacher_ratio: float = 0.5
     target_samples: int | None = None
     max_steps: int | None = None
