@@ -24,6 +24,8 @@ from typing import Iterable, Iterator
 
 from tqdm import tqdm
 
+from utils.tqdm_utils import PROGRESS_BAR_FORMAT, progress_kwargs
+
 SPECIAL_TOKENS: tuple[str, ...] = ("<PAD>", "<BOS>", "<EOS>", "<UNK>")
 
 # Split text into word-ish chunks.  Keeping the leading space in the chunk lets
@@ -119,7 +121,8 @@ class BPETokenizer:
             unit="char",
             unit_scale=True,
             dynamic_ncols=True,
-            disable=not verbose,
+            bar_format=PROGRESS_BAR_FORMAT,
+            **progress_kwargs(disabled=not verbose),
         ) as read_bar:
             for text in texts:
                 chunk_freq.update(self._pretokenize(text))
@@ -155,7 +158,8 @@ class BPETokenizer:
             desc="tokenize: merges",
             unit="merge",
             dynamic_ncols=True,
-            disable=not verbose,
+            bar_format=PROGRESS_BAR_FORMAT,
+            **progress_kwargs(disabled=not verbose),
         ):
             best: tuple[tuple[int, int], int] | None = None
             while heap:

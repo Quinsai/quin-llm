@@ -11,6 +11,7 @@ import torch
 from tqdm import tqdm
 
 from pipeline.sources import iter_sft_examples, parse_sft_file
+from utils.tqdm_utils import PROGRESS_BAR_FORMAT, progress_kwargs
 
 PROMPT_TEMPLATE = "###User:\n{user}\n###Agent:\n"
 
@@ -47,6 +48,8 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
         desc="prepare-sft",
         unit="sample",
         dynamic_ncols=True,
+        bar_format=PROGRESS_BAR_FORMAT,
+        **progress_kwargs(),
     ) as pbar:
         for user, answer in iter_sft_examples(source):
             pbar.update(1)
@@ -56,14 +59,12 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
             if len(answer_ids) <= 1:
                 # Only EOS: the source produced an empty answer.
                 skipped += 1
-                pbar.set_postfix(kept=len(samples), skipped=skipped, overlong=overlong)
                 continue
             if len(prompt_ids) + len(answer_ids) > stored_len:
                 # Truncation would either drop the instruction or cut the
                 # answer mid-sentence and force a premature EOS.  Skip instead.
                 skipped += 1
                 overlong += 1
-                pbar.set_postfix(kept=len(samples), skipped=skipped, overlong=overlong)
                 continue
             ids = prompt_ids + answer_ids
             labels = [-100] * len(prompt_ids) + answer_ids
@@ -76,7 +77,6 @@ def prepare_sft(cfg: dict, tokenizer, block_size: int) -> dict:
                     np.asarray(labels, dtype=np.int32),
                 )
             )
-            pbar.set_postfix(kept=len(samples), skipped=skipped, overlong=overlong)
 
     if not samples:
         raise ValueError("no SFT samples were produced")

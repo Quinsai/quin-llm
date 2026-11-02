@@ -17,6 +17,11 @@ from tqdm import tqdm
 
 from config import TrainConfig
 from utils.logger import CSVLogger
+from utils.tqdm_utils import (
+    PROGRESS_BAR_FORMAT,
+    progress_kwargs,
+    progress_write,
+)
 from utils.visualizer import draw_curves
 
 
@@ -252,6 +257,8 @@ class Trainer:
             desc=tag,
             unit="step",
             dynamic_ncols=True,
+            bar_format=PROGRESS_BAR_FORMAT,
+            **progress_kwargs(),
         )
         try:
             while step < max_steps:
@@ -282,17 +289,13 @@ class Trainer:
                     accum_loss = 0.0
                     elapsed = max(1e-9, time.time() - start_time)
                     tokens_per_sec = tokens_seen / elapsed
-                    pbar.set_postfix(
-                        train_loss=f"{train_loss:.4f}",
-                        lr=f"{lr:.1e}",
-                        tok_s=f"{tokens_per_sec:,.0f}",
-                    )
 
                     if step == 1 or step % self.cfg.log_interval == 0:
-                        pbar.write(
+                        progress_write(
+                            pbar,
                             f"[{tag}] step {step}/{max_steps} "
                             f"train_loss {train_loss:.4f} lr {lr:.2e} "
-                            f"{tokens_per_sec:,.0f} tok/s"
+                            f"{tokens_per_sec:,.0f} tok/s",
                         )
                         logger.log(
                             step=step,
@@ -311,7 +314,9 @@ class Trainer:
                         and step % self.cfg.eval_interval == 0
                     ):
                         val_loss = self.evaluate(val_loader)
-                        pbar.write(f"[{tag}] step {step} val_loss {val_loss:.4f}")
+                        progress_write(
+                            pbar, f"[{tag}] step {step} val_loss {val_loss:.4f}"
+                        )
                         logger.log(
                             step=step,
                             train_loss=train_loss,

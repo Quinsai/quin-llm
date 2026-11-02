@@ -10,6 +10,11 @@ import numpy as np
 from tqdm import tqdm
 
 from pipeline.sources import iter_source_texts
+from utils.tqdm_utils import (
+    PROGRESS_BAR_FORMAT,
+    progress_kwargs,
+    progress_write,
+)
 
 
 def prepare_pretrain(cfg: dict, tokenizer) -> dict:
@@ -50,13 +55,17 @@ def prepare_pretrain(cfg: dict, tokenizer) -> dict:
         unit="tok",
         unit_scale=True,
         dynamic_ncols=True,
+        bar_format=PROGRESS_BAR_FORMAT,
+        **progress_kwargs(),
     ) as pbar:
         try:
             for source, weight in zip(sources, weights):
                 budget = int(total_budget * weight / weight_sum)
                 used = 0
                 source_name = source.get("dataset", source.get("path"))
-                pbar.write(f"pretrain data: source={source_name} budget={budget:,}")
+                progress_write(
+                    pbar, f"pretrain data: source={source_name} budget={budget:,}"
+                )
                 for text in iter_source_texts(source):
                     ids = tokenizer.encode(text, add_bos=True, add_eos=True)
                     if not ids:
@@ -73,7 +82,10 @@ def prepare_pretrain(cfg: dict, tokenizer) -> dict:
                         break
                 flush("train")
                 flush("val")
-                pbar.write(f"  source done: train={counts['train']:,} val={counts['val']:,}")
+                progress_write(
+                    pbar,
+                    f"  source done: train={counts['train']:,} val={counts['val']:,}",
+                )
                 if written >= total_budget:
                     break
         finally:

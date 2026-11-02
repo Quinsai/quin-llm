@@ -46,8 +46,9 @@ mode (default: full):
   mini               CPU-only smoke configs
 
 save-log (default: true):
-  true               write stdout/stderr to log/pipeline_*.log
-  false              do not write a log file
+  true               write all output except tqdm progress bars to
+                     log/pipeline_*.log; progress bars stay in the terminal
+  false              print to the terminal only
 
 The script runs every stage from start through end, inclusive.
 
@@ -204,10 +205,16 @@ LOG_DIR="${LOG_DIR:-log}"
 if ((SAVE_LOG)); then
     mkdir -p "$LOG_DIR"
     LOG_FILE="$LOG_DIR/pipeline_${MODE}_$(date +%Y%m%d_%H%M%S).log"
-    exec > >(tee "$LOG_FILE") 2>&1
     export PYTHONUNBUFFERED=1
-    echo "log: $LOG_FILE"
+    # Ordinary output goes to both the terminal and the log.  tqdm writes to
+    # /dev/tty directly, so progress bars never reach the tee pipe.  Use
+    # append mode because the trainer also appends metric lines directly.
+    : >"$LOG_FILE"
+    export QUIN_LOG_FILE="$LOG_FILE"
+    exec > >(tee -a "$LOG_FILE") 2>&1
+    echo "log: $LOG_FILE (progress bars stay in the terminal)"
 else
+    unset QUIN_LOG_FILE
     echo "log: disabled"
 fi
 

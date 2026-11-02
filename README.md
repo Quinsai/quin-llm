@@ -92,7 +92,7 @@ python scripts/gpu_smoke.py
 - `start` 默认是 `pretrain`
 - `end` 默认是 `sft`
 - `mode` 可选：`full`（默认，V100 完整配置）或 `mini`（纯 CPU 冒烟配置）
-- `save-log` 可选：`true`（默认，输出同时写入 `log/pipeline_*.log`）或 `false`
+- `save-log` 可选：`true`（默认，除 tqdm 进度条外的全部输出写入 `log/pipeline_*.log`，进度条只显示在终端）或 `false`（不写日志文件）
 
 示例：
 
@@ -117,7 +117,7 @@ CKPT=checkpoints/sft_full/final.pt ./run_chat.sh
 ./run_chat.sh --temperature 0.7 --max-new-tokens 300
 ```
 
-`run_chat.sh` 默认把终端输出同时写入 `log/chat_*.log`，`run_pipeline.sh` 默认写入 `log/pipeline_*.log`；传 `--save-log false` 可以关闭。
+`run_pipeline.sh` 默认把除 tqdm 进度条外的全部输出同时写入终端和 `log/pipeline_*.log`；进度条直接写终端，不进入日志文件。没有控制终端（例如 `nohup`）时会自动关闭进度条。`run_chat.sh` 默认把终端输出同时写入 `log/chat_*.log`。两者传 `--save-log false` 都关闭日志文件。
 
 ### 配置文件的分工
 
