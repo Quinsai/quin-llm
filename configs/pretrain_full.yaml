@@ -32,8 +32,8 @@ train:
   out_dir: checkpoints/pretrain_full
   batch_size: 128
   grad_accum_steps: 1
-  lr: 0.0006
-  min_lr: 0.00006
+  lr: 0.006
+  min_lr: 0.0006
   weight_decay: 0.1
   beta1: 0.9
   beta2: 0.95
@@ -41,10 +41,10 @@ train:
   warmup_steps: 500
   max_steps: 12000
   epochs: null
-  eval_interval: 250
+  eval_interval: 100
   eval_batches: 50
   # Stop after this many evaluations without val_loss improvement; null disables.
-  early_stop_patience: 10
+  early_stop_patience: 5
   min_delta: 0.0
   save_interval: 1000
   log_interval: 20

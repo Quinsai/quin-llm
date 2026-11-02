@@ -17,8 +17,8 @@ train:
   out_dir: checkpoints/sft_full
   batch_size: 32
   grad_accum_steps: 1
-  lr: 0.0001
-  min_lr: 0.00001
+  lr: 0.0003
+  min_lr: 0.00003
   weight_decay: 0.1
   beta1: 0.9
   beta2: 0.95
@@ -29,7 +29,7 @@ train:
   eval_interval: 100
   eval_batches: 50
   # Stop after this many evaluations without val_loss improvement; null disables.
-  early_stop_patience: 10
+  early_stop_patience: 5
   min_delta: 0.0
   save_interval: 500
   log_interval: 20
