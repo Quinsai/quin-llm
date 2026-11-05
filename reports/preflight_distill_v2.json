@@ -1,0 +1,170 @@
+{
+  "created_at": "2026-11-05T13:27:24.546476+00:00",
+  "checks": [
+    {
+      "name": "package:requests",
+      "status": "PASS",
+      "detail": "version=2.34.2",
+      "required": true
+    },
+    {
+      "name": "package:pandas",
+      "status": "PASS",
+      "detail": "version=2.3.3",
+      "required": false
+    },
+    {
+      "name": "package:pyarrow",
+      "status": "PASS",
+      "detail": "version=25.0.1",
+      "required": false
+    },
+    {
+      "name": "package:datasets",
+      "status": "PASS",
+      "detail": "version=3.6.0",
+      "required": false
+    },
+    {
+      "name": "package:torch",
+      "status": "PASS",
+      "detail": "version=2.6.0",
+      "required": true
+    },
+    {
+      "name": "cuda",
+      "status": "PASS",
+      "detail": "cuda=True, count=1, name=Tesla V100-PCIE-32GB",
+      "required": false
+    },
+    {
+      "name": "tokenizer",
+      "status": "PASS",
+      "detail": "processed_data/tokenizer/tokenizer.pkl",
+      "required": true
+    },
+    {
+      "name": "pretrain checkpoint",
+      "status": "PASS",
+      "detail": "checkpoints/pretrain_full/best.pt",
+      "required": true
+    },
+    {
+      "name": "alpaca parquet",
+      "status": "PASS",
+      "detail": "1 file(s)",
+      "required": true
+    },
+    {
+      "name": "pretrain meta",
+      "status": "PASS",
+      "detail": "processed_data/pretrain/meta.json",
+      "required": false
+    },
+    {
+      "name": "sft meta",
+      "status": "PASS",
+      "detail": "processed_data/sft/meta.json",
+      "required": false
+    },
+    {
+      "name": "sft log",
+      "status": "PASS",
+      "detail": "checkpoints/sft_full/sft_log.csv",
+      "required": false
+    },
+    {
+      "name": "sft config",
+      "status": "PASS",
+      "detail": "configs/sft_full.yaml",
+      "required": false
+    },
+    {
+      "name": "evaluation datasets",
+      "status": "PASS",
+      "detail": "evaluation/datasets",
+      "required": false
+    },
+    {
+      "name": "train/eval entity split",
+      "status": "PASS",
+      "detail": "disjoint",
+      "required": true
+    },
+    {
+      "name": "writable:checkpoints/sft_baseline_controlled",
+      "status": "PASS",
+      "detail": "checkpoints/sft_baseline_controlled not created",
+      "required": false
+    },
+    {
+      "name": "writable:checkpoints/sft_distill",
+      "status": "PASS",
+      "detail": "checkpoints/sft_distill not created",
+      "required": false
+    },
+    {
+      "name": "writable:data/distill",
+      "status": "PASS",
+      "detail": "data/distill exists",
+      "required": false
+    },
+    {
+      "name": "teacher base_url",
+      "status": "WARN",
+      "detail": "empty",
+      "required": false
+    },
+    {
+      "name": "teacher model",
+      "status": "WARN",
+      "detail": "empty",
+      "required": false
+    },
+    {
+      "name": "teacher api key (env:TEACHER_API_KEY)",
+      "status": "WARN",
+      "detail": "missing",
+      "required": false
+    },
+    {
+      "name": "baseline budget",
+      "status": "PASS",
+      "detail": "max_steps=3180, answer_tokens_seen~5,971,338",
+      "required": true
+    }
+  ],
+  "paths": {
+    "tokenizer": "processed_data/tokenizer/tokenizer.pkl",
+    "pretrain_checkpoint": "checkpoints/pretrain_full/best.pt",
+    "alpaca_files": [
+      "data/raw/alpaca/train.parquet"
+    ],
+    "sft_meta": "processed_data/sft/meta.json",
+    "sft_log": "checkpoints/sft_full/sft_log.csv",
+    "sft_config": "configs/sft_full.yaml"
+  },
+  "teacher": {
+    "base_url": "",
+    "model": "",
+    "api_key_present": false,
+    "api_key_source": "env:TEACHER_API_KEY"
+  },
+  "baseline_budget": {
+    "sft_meta": "processed_data/sft/meta.json",
+    "sft_log": "checkpoints/sft_full/sft_log.csv",
+    "sft_config": "configs/sft_full.yaml",
+    "train_samples": 50883,
+    "train_answer_tokens": 3142995,
+    "avg_answer_tokens": 61.769,
+    "batch_size": 32,
+    "epochs": 2,
+    "replay_prob": 0.05,
+    "planned_steps": 3182,
+    "log_final_step": 3180,
+    "max_steps": 3180,
+    "answer_tokens_seen_estimate": 5971338,
+    "created_at": "2026-11-05T13:27:24.546074+00:00"
+  },
+  "failed": 0
+}

@@ -1,0 +1,312 @@
+{
+  "overall": {
+    "n": 78,
+    "scored": 64,
+    "unscored": 14,
+    "accuracy": 0.1406,
+    "mean_score": 0.1426,
+    "score_ci95": [
+      0.0645,
+      0.2383
+    ],
+    "mean_repetition_rate": 0.1359
+  },
+  "by_category": {
+    "behavior_extraction": {
+      "n": 6,
+      "scored": 6,
+      "unscored": 0,
+      "accuracy": 0.1667,
+      "mean_score": 0.1667,
+      "score_ci95": [
+        0.0,
+        0.5
+      ],
+      "mean_repetition_rate": 0.0476
+    },
+    "behavior_instruction": {
+      "n": 6,
+      "scored": 6,
+      "unscored": 0,
+      "accuracy": 0.1667,
+      "mean_score": 0.1667,
+      "score_ci95": [
+        0.0,
+        0.5
+      ],
+      "mean_repetition_rate": 0.2821
+    },
+    "behavior_json": {
+      "n": 6,
+      "scored": 6,
+      "unscored": 0,
+      "accuracy": 0.0,
+      "mean_score": 0.0,
+      "score_ci95": [
+        0.0,
+        0.0
+      ],
+      "mean_repetition_rate": 0.4169
+    },
+    "fact_qa": {
+      "n": 44,
+      "scored": 44,
+      "unscored": 0,
+      "accuracy": 0.1591,
+      "mean_score": 0.1591,
+      "score_ci95": [
+        0.0682,
+        0.2727
+      ],
+      "mean_repetition_rate": 0.0081
+    },
+    "retention_alpaca": {
+      "n": 8,
+      "scored": 2,
+      "unscored": 6,
+      "accuracy": 0.0,
+      "mean_score": 0.0625,
+      "score_ci95": [
+        0.0,
+        0.125
+      ],
+      "mean_repetition_rate": 0.2034
+    },
+    "retention_chat": {
+      "n": 4,
+      "scored": 0,
+      "unscored": 4,
+      "accuracy": null,
+      "mean_score": null,
+      "score_ci95": null,
+      "mean_repetition_rate": 0.4563
+    },
+    "retention_story": {
+      "n": 4,
+      "scored": 0,
+      "unscored": 4,
+      "accuracy": null,
+      "mean_score": null,
+      "score_ci95": null,
+      "mean_repetition_rate": 0.5777
+    }
+  },
+  "by_split": {
+    "behavioral": {
+      "n": 18,
+      "scored": 18,
+      "unscored": 0,
+      "accuracy": 0.1111,
+      "mean_score": 0.1111,
+      "score_ci95": [
+        0.0,
+        0.2778
+      ],
+      "mean_repetition_rate": 0.2489
+    },
+    "external_floor": {
+      "n": 8,
+      "scored": 8,
+      "unscored": 0,
+      "accuracy": 0.0,
+      "mean_score": 0.0,
+      "score_ci95": [
+        0.0,
+        0.0
+      ],
+      "mean_repetition_rate": 0.0444
+    },
+    "retention": {
+      "n": 16,
+      "scored": 2,
+      "unscored": 14,
+      "accuracy": 0.0,
+      "mean_score": 0.0625,
+      "score_ci95": [
+        0.0,
+        0.125
+      ],
+      "mean_repetition_rate": 0.3602
+    },
+    "seen_entity_seen_template": {
+      "n": 12,
+      "scored": 12,
+      "unscored": 0,
+      "accuracy": 0.25,
+      "mean_score": 0.25,
+      "score_ci95": [
+        0.0,
+        0.5
+      ],
+      "mean_repetition_rate": 0.0
+    },
+    "seen_entity_unseen_template": {
+      "n": 12,
+      "scored": 12,
+      "unscored": 0,
+      "accuracy": 0.3333,
+      "mean_score": 0.3333,
+      "score_ci95": [
+        0.0833,
+        0.5833
+      ],
+      "mean_repetition_rate": 0.0
+    },
+    "unseen_entity": {
+      "n": 12,
+      "scored": 12,
+      "unscored": 0,
+      "accuracy": 0.0,
+      "mean_score": 0.0,
+      "score_ci95": [
+        0.0,
+        0.0
+      ],
+      "mean_repetition_rate": 0.0
+    }
+  },
+  "by_category_split": {
+    "behavior_extraction/behavioral": {
+      "n": 6,
+      "scored": 6,
+      "unscored": 0,
+      "accuracy": 0.1667,
+      "mean_score": 0.1667,
+      "score_ci95": [
+        0.0,
+        0.5
+      ],
+      "mean_repetition_rate": 0.0476
+    },
+    "behavior_instruction/behavioral": {
+      "n": 6,
+      "scored": 6,
+      "unscored": 0,
+      "accuracy": 0.1667,
+      "mean_score": 0.1667,
+      "score_ci95": [
+        0.0,
+        0.5
+      ],
+      "mean_repetition_rate": 0.2821
+    },
+    "behavior_json/behavioral": {
+      "n": 6,
+      "scored": 6,
+      "unscored": 0,
+      "accuracy": 0.0,
+      "mean_score": 0.0,
+      "score_ci95": [
+        0.0,
+        0.0
+      ],
+      "mean_repetition_rate": 0.4169
+    },
+    "fact_qa/external_floor": {
+      "n": 8,
+      "scored": 8,
+      "unscored": 0,
+      "accuracy": 0.0,
+      "mean_score": 0.0,
+      "score_ci95": [
+        0.0,
+        0.0
+      ],
+      "mean_repetition_rate": 0.0444
+    },
+    "fact_qa/seen_entity_seen_template": {
+      "n": 12,
+      "scored": 12,
+      "unscored": 0,
+      "accuracy": 0.25,
+      "mean_score": 0.25,
+      "score_ci95": [
+        0.0,
+        0.5
+      ],
+      "mean_repetition_rate": 0.0
+    },
+    "fact_qa/seen_entity_unseen_template": {
+      "n": 12,
+      "scored": 12,
+      "unscored": 0,
+      "accuracy": 0.3333,
+      "mean_score": 0.3333,
+      "score_ci95": [
+        0.0833,
+        0.5833
+      ],
+      "mean_repetition_rate": 0.0
+    },
+    "fact_qa/unseen_entity": {
+      "n": 12,
+      "scored": 12,
+      "unscored": 0,
+      "accuracy": 0.0,
+      "mean_score": 0.0,
+      "score_ci95": [
+        0.0,
+        0.0
+      ],
+      "mean_repetition_rate": 0.0
+    },
+    "retention_alpaca/retention": {
+      "n": 8,
+      "scored": 2,
+      "unscored": 6,
+      "accuracy": 0.0,
+      "mean_score": 0.0625,
+      "score_ci95": [
+        0.0,
+        0.125
+      ],
+      "mean_repetition_rate": 0.2034
+    },
+    "retention_chat/retention": {
+      "n": 4,
+      "scored": 0,
+      "unscored": 4,
+      "accuracy": null,
+      "mean_score": null,
+      "score_ci95": null,
+      "mean_repetition_rate": 0.4563
+    },
+    "retention_story/retention": {
+      "n": 4,
+      "scored": 0,
+      "unscored": 4,
+      "accuracy": null,
+      "mean_score": null,
+      "score_ci95": null,
+      "mean_repetition_rate": 0.5777
+    }
+  },
+  "metadata": {
+    "created_at": "2026-11-05T13:38:25.909651+00:00",
+    "checkpoint": "checkpoints/sft_distill_distill_v2/best.pt",
+    "checkpoint_step": 300,
+    "tokenizer": "processed_data/tokenizer/tokenizer.pkl",
+    "device": "cuda",
+    "eval_dir": "evaluation/datasets",
+    "out": "reports/eval_mixed_distill_v2.jsonl",
+    "examples": 78,
+    "config": {
+      "ckpt": "checkpoints/sft_distill_distill_v2/best.pt",
+      "tokenizer": null,
+      "device": null,
+      "eval_dir": "evaluation/datasets",
+      "out": "reports/eval_mixed_distill_v2.jsonl",
+      "metrics_out": null,
+      "max_new_tokens_fact": 24,
+      "max_new_tokens_open": 200,
+      "temperature": 0.0,
+      "top_k": null,
+      "top_p": null,
+      "repetition_penalty": 1.0,
+      "limit": null,
+      "categories": null,
+      "splits": null,
+      "seed": 42
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "train_path": "data/distill/sft/distill_v2/train.parquet",
+  "eval_path": "evaluation/datasets",
+  "threshold": 0.85,
+  "train_rows": 2797,
+  "eval_rows": 78,
+  "eval_entities": 18,
+  "exact_instruction_hits": 0,
+  "near_instruction_hits": 0,
+  "exact_pair_hits": 0,
+  "entity_hits": 8,
+  "examples": {
+    "exact_instruction": [],
+    "near_instruction": [],
+    "exact_pair": [],
+    "entity": [
+      {
+        "entity": "Saturn",
+        "instruction": "Create a list of the 8 planets in our Solar System in order from the closest to the Sun to the farthest"
+      },
+      {
+        "entity": "Alan Turing",
+        "instruction": "What is Alan Turing famous for?"
+      },
+      {
+        "entity": "Argentina",
+        "instruction": "Name five countries whose official language is Spanish"
+      },
+      {
+        "entity": "Mexico",
+        "instruction": "Output the names of the US states"
+      },
+      {
+        "entity": "Venus",
+        "instruction": "List five facts about the solar system"
+      }
+    ]
+  },
+  "total_hits": 8
+}

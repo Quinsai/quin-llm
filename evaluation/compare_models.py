@@ -274,12 +274,12 @@ def run_compare(
         if b.get("correct") is None or c.get("correct") is None
     ]
     retention_cases = []
-    for baseline, candidate in unscored[:3]:
+    for base_row, cand_row in unscored[:3]:
         retention_cases.extend(
             [
-                f"- **{candidate.get('id')}** — {_cell(candidate.get('instruction'))}",
-                f"  - Baseline: {_cell(candidate.get('prediction'), 300)}",
-                f"  - Mixed: {_cell(candidate.get('prediction'), 300)}",
+                f"- **{cand_row.get('id')}** — {_cell(cand_row.get('instruction'))}",
+                f"  - Baseline: {_cell(base_row.get('prediction'), 300)}",
+                f"  - Mixed: {_cell(cand_row.get('prediction'), 300)}",
             ]
         )
     if not retention_cases:
