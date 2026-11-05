@@ -39,7 +39,15 @@ def main() -> None:
         default=None,
         help="comma-separated category filter, e.g. fact_qa,format_json",
     )
+    parser.add_argument(
+        "--replace-categories",
+        action="store_true",
+        help="drop existing raw records for the selected --categories before "
+        "generating; used when that category's tasks were rebuilt",
+    )
     args = parser.parse_args()
+    if args.replace_categories and not args.categories:
+        parser.error("--replace-categories requires --categories")
 
     cfg = DistillGenerationConfig.from_yaml(args.config)
     if args.run_id:
@@ -56,6 +64,7 @@ def main() -> None:
         limit=args.limit,
         reuse_tasks=args.reuse_tasks,
         categories=categories,
+        replace_categories=args.replace_categories,
     )
 
 

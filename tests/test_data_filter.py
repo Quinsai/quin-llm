@@ -6,6 +6,7 @@ from pathlib import Path
 
 from config import DistillFilterConfig
 from distillation.data_filter import filter_records
+from distillation.prompts import build_user_prompt
 
 
 def raw_record(
@@ -228,6 +229,53 @@ class CategoryFilterTest(FilterTestBase):
             ]
         )
         self.assertIn("chain_of_thought", self.rejected_rows()[0]["reasons"])
+
+    def test_prompt_echo_is_rejected(self):
+        seed = {"entity": "France", "expected": ["Paris"]}
+        prompt = build_user_prompt(
+            {"category": "fact_qa", "difficulty": "easy", "seed": seed}
+        )
+        self.run_filter(
+            [
+                raw_record(
+                    "fact-echo",
+                    "fact_qa",
+                    prompt,
+                    "The capital of France is Paris.",
+                    seed=seed,
+                )
+            ]
+        )
+        reasons = self.rejected_rows()[0]["reasons"]
+        self.assertIn("prompt_echo", reasons)
+
+    def test_declared_word_count_constraints(self):
+        self.run_filter(
+            [
+                raw_record(
+                    "instr-ok",
+                    "instruction",
+                    "Describe tea in exactly 5 words.",
+                    "Tea is a warm drink.",
+                ),
+                raw_record(
+                    "instr-exact-bad",
+                    "instruction",
+                    "Describe coffee in exactly 5 words.",
+                    "Coffee is a very warm drink.",
+                ),
+                raw_record(
+                    "instr-max-bad",
+                    "instruction",
+                    "Describe milk in at most 5 words.",
+                    "Milk is a very cold drink.",
+                ),
+            ]
+        )
+        by_id = {r["task_id"]: r["reasons"] for r in self.rejected_rows()}
+        self.assertIn("constraint_declared_words", by_id["instr-exact-bad"])
+        self.assertIn("constraint_declared_words", by_id["instr-max-bad"])
+        self.assertNotIn("instr-ok", by_id)
 
     def test_finish_reason_not_stop_is_rejected(self):
         self.run_filter(

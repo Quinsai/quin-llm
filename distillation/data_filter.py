@@ -25,7 +25,7 @@ from typing import Any
 from config import DistillFilterConfig
 from pipeline.tokenizer.bpe_tokenizer import BPETokenizer
 
-from .prompts import schema_for_example
+from .prompts import build_user_prompt, schema_for_example
 from .text_utils import (
     NearDuplicateIndex,
     english_ratio,
@@ -104,6 +104,122 @@ def _is_degenerate(text: str) -> bool:
 
 def _bullet_count(text: str) -> int:
     return sum(1 for line in text.splitlines() if _BULLET_RE.match(line))
+
+
+_NUMBER_WORDS = {
+    "zero": 0,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+}
+_COUNT_UNIT = r"(?:words?|sentences?|bullet\s+points?|bullets?)"
+_QUALIFIED_COUNT_RE = re.compile(
+    rf"\b(exactly|at\s+most|at\s+least|no\s+more\s+than|no\s+fewer\s+than|"
+    rf"maximum\s+of|minimum\s+of|up\s+to)\s+"
+    rf"(\d+|{'|'.join(_NUMBER_WORDS)})(?:\s+(?:short|simple|brief|complete|"
+    rf"full|total|separate|distinct))?\s+({_COUNT_UNIT})\b",
+    re.IGNORECASE,
+)
+_OR_COUNT_RE = re.compile(
+    rf"\b(\d+|{'|'.join(_NUMBER_WORDS)})(?:\s+(?:short|simple|brief|complete|"
+    rf"full|total|separate|distinct))?\s+({_COUNT_UNIT})\s+or\s+(fewer|less|more)\b",
+    re.IGNORECASE,
+)
+
+
+def _parse_count(value: str) -> int | None:
+    value = value.lower()
+    if value.isdigit():
+        return int(value)
+    return _NUMBER_WORDS.get(value)
+
+
+def _is_prompt_echo(instruction: str, task: dict[str, Any]) -> bool:
+    """True when the teacher copied the meta-prompt into ``instruction``."""
+    try:
+        prompt = build_user_prompt(task)
+    except (KeyError, TypeError, ValueError):
+        return False
+    norm_instruction = normalize_text(instruction)
+    norm_prompt = normalize_text(prompt)
+    if not norm_instruction or not norm_prompt:
+        return False
+    if norm_instruction == norm_prompt:
+        return True
+    if len(norm_instruction) >= 40 and norm_instruction in norm_prompt:
+        return True
+    if len(norm_prompt) >= 40 and norm_prompt in norm_instruction:
+        return True
+    return False
+
+
+def _check_declared_constraints(
+    instruction: str, output: str, reasons: list[str], details: dict[str, Any]
+) -> None:
+    """Check numeric constraints the teacher wrote into the instruction itself.
+
+    Seed constraints are checked separately; this catches cases such as an
+    instruction saying "exactly 15 words" when the answer has 19.
+    """
+    checks: list[tuple[int, int, str, str]] = []
+    for match in _QUALIFIED_COUNT_RE.finditer(instruction):
+        qualifier, number_text = match.group(1), match.group(2)
+        unit = match.group(3).lower()
+        number = _parse_count(number_text)
+        if number is None:
+            continue
+        checks.append((number, _count_for_unit(unit, output), qualifier, unit))
+    for match in _OR_COUNT_RE.finditer(instruction):
+        number_text = match.group(1)
+        unit = match.group(2).lower()
+        direction = match.group(3).lower()
+        number = _parse_count(number_text)
+        if number is None:
+            continue
+        qualifier = "at most" if direction in {"fewer", "less"} else "at least"
+        checks.append((number, _count_for_unit(unit, output), qualifier, unit))
+
+    for expected, actual, qualifier, unit in checks:
+        normalized = " ".join(qualifier.lower().split())
+        failed = False
+        if normalized == "exactly":
+            failed = actual != expected
+        elif normalized in {"at most", "no more than", "maximum of", "up to"}:
+            failed = actual > expected
+        elif normalized in {"at least", "no fewer than", "minimum of"}:
+            failed = actual < expected
+        if failed:
+            reasons.append(f"constraint_declared_{_unit_name(unit)}")
+            details[f"declared_{_unit_name(unit)}"] = {
+                "expected": expected,
+                "actual": actual,
+                "qualifier": normalized,
+            }
+
+
+def _count_for_unit(unit: str, output: str) -> int:
+    if unit.startswith("word"):
+        return len(word_tokens(output))
+    if unit.startswith("sentence"):
+        return sentence_count(output)
+    return _bullet_count(output)
+
+
+def _unit_name(unit: str) -> str:
+    if unit.startswith("word"):
+        return "words"
+    if unit.startswith("sentence"):
+        return "sentences"
+    return "bullets"
 
 
 # ----------------------------------------------------------------------
@@ -431,8 +547,18 @@ def _filter_one(
         reasons.append("empty_output")
 
     category = str(raw.get("category", ""))
+    seed = raw.get("seed") or {}
     if category not in _FAILED_CATEGORIES:
         reasons.append("unknown_category")
+    elif instruction and _is_prompt_echo(
+        instruction,
+        {
+            "category": category,
+            "seed": seed,
+            "difficulty": raw.get("difficulty", "easy"),
+        },
+    ):
+        reasons.append("prompt_echo")
 
     if instruction:
         if len(instruction) < int(cfg.min_instruction_chars):
@@ -452,7 +578,6 @@ def _filter_one(
             reasons.append("output_too_long")
 
     # Category-specific cleaning and rule checks.
-    seed = raw.get("seed") or {}
     if output and category == "format_json":
         output = _check_json(instruction, output, seed, reasons, details)
     elif output and category == "extraction":
@@ -461,6 +586,7 @@ def _filter_one(
         _check_fact(instruction, output, seed, reasons, details)
     elif output and category == "instruction":
         _check_instruction_constraint(output, seed, reasons, details)
+        _check_declared_constraints(instruction, output, reasons, details)
     elif output and category == "reasoning":
         _check_reasoning(output, reasons)
 

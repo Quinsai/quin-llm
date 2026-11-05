@@ -118,7 +118,7 @@ class TaskBuilderTest(unittest.TestCase):
         )
         self.assertEqual(
             len(load_entities(ROOT / "distillation" / "seeds" / "train_entities.jsonl")),
-            38,
+            246,
         )
 
     def test_overlapping_entity_splits_fail(self):
@@ -131,6 +131,30 @@ class TaskBuilderTest(unittest.TestCase):
             assert_disjoint_entities(
                 ROOT / "distillation" / "seeds" / "train_entities.jsonl", bad
             )
+
+    def test_fact_tasks_use_distinct_facts(self):
+        tasks = build_tasks(self.config())
+        facts = [t for t in tasks if t["category"] == "fact_qa"]
+        keys = [
+            (
+                task["seed"]["entity"],
+                task["seed"]["relation"],
+                tuple(task["seed"].get("expected") or []),
+            )
+            for task in facts
+        ]
+        self.assertEqual(len(keys), 20)
+        self.assertEqual(len(keys), len(set(keys)))
+
+    def test_reasoning_tasks_use_distinct_topics(self):
+        tasks = build_tasks(self.config())
+        topics = [
+            task["seed"]["topic"]
+            for task in tasks
+            if task["category"] == "reasoning"
+        ]
+        self.assertEqual(len(topics), 6)
+        self.assertEqual(len(topics), len(set(topics)))
 
     def test_schema_validation_accepts_nested_arrays(self):
         schema = JSON_SCHEMAS[3]  # product, includes array of strings

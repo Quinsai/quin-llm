@@ -192,6 +192,7 @@ def run_generation(
     limit: int | None = None,
     reuse_tasks: bool = False,
     categories: list[str] | None = None,
+    replace_categories: bool = False,
 ) -> Path | None:
     task_path = Path(cfg.tasks_dir) / f"{cfg.run_id}.jsonl"
     if reuse_tasks and task_path.exists():
@@ -216,6 +217,28 @@ def run_generation(
     out_dir = Path(cfg.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     raw_path = out_dir / f"{cfg.run_id}.jsonl"
+
+    if replace_categories:
+        if not categories:
+            raise ValueError("replace_categories requires an explicit category list")
+        state = _read_raw(raw_path)
+        drop = set(categories)
+        kept = [
+            record
+            for record in state.records
+            if str(record.get("category", "")) not in drop
+        ]
+        removed = len(state.records) - len(kept)
+        if removed:
+            tmp_path = raw_path.with_name(raw_path.name + ".tmp")
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                for record in kept:
+                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            tmp_path.replace(raw_path)
+            print(
+                f"replace: removed {removed:,} raw record(s) for "
+                f"{sorted(drop)} from {raw_path}"
+            )
 
     state = _read_raw(raw_path)
     if state.done:

@@ -216,7 +216,7 @@ class DistillGenerationConfig(_StageConfig):
     teacher_config: str = "configs/distill_teacher.yaml"
     out_dir: str = "data/distill/raw"
     tasks_dir: str = "data/distill/tasks"
-    prompt_version: str = "v1"
+    prompt_version: str = "v2"
     seed: int = 42
     max_requests: int | None = None
     max_completion_tokens: int | None = None

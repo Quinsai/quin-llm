@@ -17,9 +17,14 @@ from config import DistillGenerationConfig
 
 from .prompts import (
     EXTRACTION_FIELDS,
+    EXTRACTION_PROMPT_STYLES,
+    FACT_PROMPT_STYLES,
     INSTRUCTION_CONSTRAINTS,
+    INSTRUCTION_PROMPT_STYLES,
+    JSON_PROMPT_STYLES,
     JSON_SCHEMAS,
     PROMPT_VERSION,
+    REASONING_PROMPT_STYLES,
     REASONING_TOPICS,
 )
 from .text_utils import canonical_json, iter_jsonl, normalize_text
@@ -51,8 +56,13 @@ def load_topics(path: str | Path) -> list[dict[str, Any]]:
     topics = []
     for item in rows:
         topic = str(item.get("topic", "")).strip()
-        if topic:
-            topics.append({"topic": topic})
+        if not topic:
+            continue
+        entry: dict[str, Any] = {"topic": topic}
+        schemas = item.get("schemas")
+        if isinstance(schemas, list):
+            entry["schemas"] = [str(x).strip() for x in schemas if str(x).strip()]
+        topics.append(entry)
     if not topics:
         raise ValueError(f"{path}: no topics found")
     return topics
@@ -84,43 +94,132 @@ def _difficulties(spec: dict[str, Any]) -> list[str]:
     return values or list(DEFAULT_DIFFICULTIES)
 
 
-def _seed_entities(spec: dict[str, Any], count: int, rng: random.Random) -> list[dict[str, Any]]:
+def _topic_entries(
+    spec: dict[str, Any], fallback: list[str] | None = None
+) -> list[dict[str, Any]]:
+    path = spec.get("seeds")
+    if path:
+        return load_topics(path)
+    topics = [{"topic": topic} for topic in (fallback or [])]
+    if not topics:
+        raise ValueError("topic-based category needs a 'seeds' topic file")
+    return topics
+
+
+def _entity_fact_seeds(spec: dict[str, Any]) -> list[dict[str, Any]]:
     path = spec.get("seeds")
     if not path:
         raise ValueError("fact_qa needs a 'seeds' entity file")
-    entities = load_entities(path)
     out: list[dict[str, Any]] = []
-    for index in range(count):
-        entity = entities[index % len(entities)]
-        facts = entity.get("facts") or {}
-        seed: dict[str, Any] = {
+    for entity in load_entities(path):
+        base: dict[str, Any] = {
             "entity": entity["entity"],
             "type": entity.get("type", ""),
         }
-        if entity.get("passage"):
-            seed["passage"] = entity["passage"]
+        passage = str(entity.get("passage") or "").strip()
+        if passage:
+            out.append({**base, "passage": passage})
+            continue
+        facts = entity.get("facts") or {}
         if facts:
-            relations = list(facts)
-            relation = relations[rng.randrange(len(relations))]
-            seed["relation"] = relation
-            seed["expected"] = list(facts[relation])
+            for relation, values in facts.items():
+                expected = list(values) if isinstance(values, list) else [values]
+                out.append({**base, "relation": relation, "expected": expected})
         elif entity.get("relation"):
-            seed["relation"] = entity["relation"]
-        out.append(seed)
+            out.append({**base, "relation": entity["relation"]})
+        else:
+            out.append(base)
+    if not out:
+        raise ValueError(f"{path}: no usable entity facts")
     return out
 
 
-def _seed_topics(
-    spec: dict[str, Any], count: int, rng: random.Random, fallback: list[str] | None = None
-) -> list[str]:
-    path = spec.get("seeds")
-    if path:
-        topics = [item["topic"] for item in load_topics(path)]
-    else:
-        topics = list(fallback or [])
-    if not topics:
-        raise ValueError("topic-based category needs a 'seeds' topic file")
-    return [topics[rng.randrange(len(topics))] for _ in range(count)]
+def _format_items(spec: dict[str, Any]) -> list[dict[str, Any]]:
+    schemas_by_name = {schema["name"]: schema for schema in JSON_SCHEMAS}
+    items: list[dict[str, Any]] = []
+    for entry in _topic_entries(spec):
+        names = entry.get("schemas") or [schema["name"] for schema in JSON_SCHEMAS]
+        for name in names:
+            schema = schemas_by_name.get(name)
+            if schema is None:
+                raise ValueError(
+                    f"topic {entry['topic']!r} references unknown schema {name!r}"
+                )
+            items.append({"topic": entry["topic"], "schema": schema})
+    return items
+
+
+def _take_tasks(
+    items: list[dict[str, Any]],
+    count: int,
+    difficulties: list[str],
+    style_count: int,
+    category: str,
+    rng: random.Random,
+) -> list[tuple[dict[str, Any], str, int]]:
+    """Pick tasks, preferring unique content before reusing a seed item.
+
+    The teacher often writes the same question for the same fact even when the
+    meta-prompt is reworded, so the first pass uses every content item once.
+    Styles and difficulties are only extra capacity after that.
+    """
+    if not items:
+        raise ValueError(f"{category}: no seed items")
+    order = list(range(len(items)))
+    rng.shuffle(order)
+    selected: list[tuple[dict[str, Any], str, int]] = []
+    used: set[tuple[int, str, int]] = set()
+
+    def add(index: int, difficulty: str, style: int) -> bool:
+        key = (index, difficulty, style)
+        if key in used:
+            return False
+        used.add(key)
+        selected.append((items[index], difficulty, style))
+        return True
+
+    # One task per distinct fact/topic/pair, with the least verbose style.
+    for position, index in enumerate(order):
+        if len(selected) >= count:
+            break
+        add(index, difficulties[position % len(difficulties)], 0)
+
+    # Reuse content under other prompt styles before repeating combinations.
+    for style in range(1, max(1, style_count)):
+        if len(selected) >= count:
+            break
+        for position, index in enumerate(order):
+            if len(selected) >= count:
+                break
+            add(index, difficulties[position % len(difficulties)], style)
+
+    # Fill in the remaining difficulty/style combinations.
+    if len(selected) < count:
+        for style in range(max(1, style_count)):
+            for index in order:
+                for difficulty in difficulties:
+                    if len(selected) >= count:
+                        break
+                    add(index, difficulty, style)
+                if len(selected) >= count:
+                    break
+            if len(selected) >= count:
+                break
+
+    if len(selected) < count:
+        print(
+            f"warning: {category}: {count:,} tasks requested but only "
+            f"{len(selected):,} unique (seed, style, difficulty) combinations; "
+            "repeating content"
+        )
+        position = 0
+        while len(selected) < count:
+            index = order[position % len(order)]
+            difficulty = difficulties[position % len(difficulties)]
+            style = (position // len(order)) % max(1, style_count)
+            selected.append((items[index], difficulty, style))
+            position += 1
+    return selected
 
 
 def _build_category(
@@ -130,92 +229,93 @@ def _build_category(
     if count <= 0:
         return []
     difficulties = _difficulties(spec)
-    tasks: list[dict[str, Any]] = []
+    seeds_path = spec.get("seeds")
 
     if category == "fact_qa":
-        seeds = _seed_entities(spec, count, rng)
-        for index, seed in enumerate(seeds):
-            tasks.append(
-                {
-                    "task_id": f"{category}-{index:06d}",
-                    "category": category,
-                    "difficulty": difficulties[index % len(difficulties)],
-                    "seed": seed,
-                    "source": Path(str(spec.get("seeds"))).name,
-                }
+        items = _entity_fact_seeds(spec)
+        selected = _take_tasks(
+            items, count, difficulties, len(FACT_PROMPT_STYLES), category, rng
+        )
+        definitions = [
+            (
+                {**item, "style": style},
+                Path(str(seeds_path)).name,
             )
-        return tasks
-
-    if category == "format_json":
-        topics = _seed_topics(spec, count, rng, fallback=None)
-        for index, topic in enumerate(topics):
-            schema = JSON_SCHEMAS[rng.randrange(len(JSON_SCHEMAS))]
-            tasks.append(
+            for item, _, style in selected
+        ]
+    elif category == "format_json":
+        items = _format_items(spec)
+        selected = _take_tasks(
+            items, count, difficulties, len(JSON_PROMPT_STYLES), category, rng
+        )
+        definitions = [
+            (
                 {
-                    "task_id": f"{category}-{index:06d}",
-                    "category": category,
-                    "difficulty": difficulties[index % len(difficulties)],
-                    "seed": {"topic": topic, "schema": schema},
-                    "source": Path(str(spec.get("seeds"))).name,
-                }
+                    "topic": item["topic"],
+                    "schema": item["schema"],
+                    "style": style,
+                },
+                Path(str(seeds_path)).name,
             )
-        return tasks
+            for item, _, style in selected
+        ]
+    elif category == "extraction":
+        items = [
+            {
+                "topic": entry["topic"],
+                "field": field["name"],
+                "field_description": field["description"],
+            }
+            for entry in _topic_entries(spec)
+            for field in EXTRACTION_FIELDS
+        ]
+        selected = _take_tasks(
+            items, count, difficulties, len(EXTRACTION_PROMPT_STYLES), category, rng
+        )
+        definitions = [
+            ({**item, "style": style}, Path(str(seeds_path)).name)
+            for item, _, style in selected
+        ]
+    elif category == "instruction":
+        items = [
+            {"topic": entry["topic"], "constraint": constraint}
+            for entry in _topic_entries(spec)
+            for constraint in INSTRUCTION_CONSTRAINTS
+        ]
+        selected = _take_tasks(
+            items, count, difficulties, len(INSTRUCTION_PROMPT_STYLES), category, rng
+        )
+        definitions = [
+            ({**item, "style": style}, Path(str(seeds_path)).name)
+            for item, _, style in selected
+        ]
+    elif category == "reasoning":
+        items = [
+            {"topic": entry["topic"]}
+            for entry in _topic_entries(spec, fallback=REASONING_TOPICS)
+        ]
+        selected = _take_tasks(
+            items, count, difficulties, len(REASONING_PROMPT_STYLES), category, rng
+        )
+        source = (
+            Path(str(seeds_path)).name if seeds_path else "builtin_reasoning_topics"
+        )
+        definitions = [({**item, "style": style}, source) for item, _, style in selected]
+    else:
+        raise ValueError(f"unknown category: {category!r}")
 
-    if category == "extraction":
-        topics = _seed_topics(spec, count, rng, fallback=None)
-        for index, topic in enumerate(topics):
-            field = EXTRACTION_FIELDS[rng.randrange(len(EXTRACTION_FIELDS))]
-            tasks.append(
-                {
-                    "task_id": f"{category}-{index:06d}",
-                    "category": category,
-                    "difficulty": difficulties[index % len(difficulties)],
-                    "seed": {
-                        "topic": topic,
-                        "field": field["name"],
-                        "field_description": field["description"],
-                    },
-                    "source": Path(str(spec.get("seeds"))).name,
-                }
-            )
-        return tasks
-
-    if category == "instruction":
-        topics = _seed_topics(spec, count, rng, fallback=None)
-        for index, topic in enumerate(topics):
-            constraint = INSTRUCTION_CONSTRAINTS[
-                rng.randrange(len(INSTRUCTION_CONSTRAINTS))
-            ]
-            tasks.append(
-                {
-                    "task_id": f"{category}-{index:06d}",
-                    "category": category,
-                    "difficulty": difficulties[index % len(difficulties)],
-                    "seed": {"topic": topic, "constraint": constraint},
-                    "source": Path(str(spec.get("seeds"))).name,
-                }
-            )
-        return tasks
-
-    if category == "reasoning":
-        topics = _seed_topics(spec, count, rng, fallback=REASONING_TOPICS)
-        for index, topic in enumerate(topics):
-            tasks.append(
-                {
-                    "task_id": f"{category}-{index:06d}",
-                    "category": category,
-                    "difficulty": difficulties[index % len(difficulties)],
-                    "seed": {"topic": topic},
-                    "source": (
-                        Path(str(spec.get("seeds"))).name
-                        if spec.get("seeds")
-                        else "builtin_reasoning_topics"
-                    ),
-                }
-            )
-        return tasks
-
-    raise ValueError(f"unknown category: {category!r}")
+    tasks: list[dict[str, Any]] = []
+    for index, (seed, source) in enumerate(definitions):
+        tasks.append(
+            {
+                "task_id": f"{category}-{index:06d}",
+                "category": category,
+                "difficulty": selected[index][1],
+                "seed": seed,
+                "source": source,
+            }
+        )
+    return tasks
 
 
 def build_tasks(cfg: DistillGenerationConfig) -> list[dict[str, Any]]:

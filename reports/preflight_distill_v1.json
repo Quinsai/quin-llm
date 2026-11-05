@@ -1,0 +1,153 @@
+{
+  "created_at": "2026-11-02T15:14:24.464627+00:00",
+  "checks": [
+    {
+      "name": "package:requests",
+      "status": "PASS",
+      "detail": "version=2.34.2",
+      "required": true
+    },
+    {
+      "name": "package:pandas",
+      "status": "PASS",
+      "detail": "version=3.1.0",
+      "required": false
+    },
+    {
+      "name": "package:pyarrow",
+      "status": "PASS",
+      "detail": "version=26.0.0",
+      "required": false
+    },
+    {
+      "name": "package:datasets",
+      "status": "PASS",
+      "detail": "version=3.6.0",
+      "required": false
+    },
+    {
+      "name": "package:torch",
+      "status": "PASS",
+      "detail": "version=2.6.0+cpu",
+      "required": true
+    },
+    {
+      "name": "cuda",
+      "status": "WARN",
+      "detail": "cuda=False, count=0, name=n/a",
+      "required": false
+    },
+    {
+      "name": "tokenizer",
+      "status": "PASS",
+      "detail": "processed_data/tokenizer/tokenizer.pkl",
+      "required": true
+    },
+    {
+      "name": "pretrain checkpoint",
+      "status": "FAIL",
+      "detail": "checkpoints/pretrain_full/best.pt",
+      "required": true
+    },
+    {
+      "name": "alpaca parquet",
+      "status": "FAIL",
+      "detail": "data/raw/alpaca/*.parquet",
+      "required": true
+    },
+    {
+      "name": "pretrain meta",
+      "status": "WARN",
+      "detail": "processed_data/pretrain/meta.json",
+      "required": false
+    },
+    {
+      "name": "sft meta",
+      "status": "WARN",
+      "detail": "processed_data/sft/meta.json",
+      "required": false
+    },
+    {
+      "name": "sft log",
+      "status": "WARN",
+      "detail": "checkpoints/sft_full/sft_log.csv",
+      "required": false
+    },
+    {
+      "name": "sft config",
+      "status": "PASS",
+      "detail": "configs/sft_full.yaml",
+      "required": false
+    },
+    {
+      "name": "evaluation datasets",
+      "status": "PASS",
+      "detail": "evaluation/datasets",
+      "required": false
+    },
+    {
+      "name": "train/eval entity split",
+      "status": "PASS",
+      "detail": "disjoint",
+      "required": true
+    },
+    {
+      "name": "writable:checkpoints/sft_baseline_controlled",
+      "status": "PASS",
+      "detail": "checkpoints/sft_baseline_controlled not created",
+      "required": false
+    },
+    {
+      "name": "writable:checkpoints/sft_distill",
+      "status": "PASS",
+      "detail": "checkpoints/sft_distill not created",
+      "required": false
+    },
+    {
+      "name": "writable:data/distill",
+      "status": "PASS",
+      "detail": "data/distill exists",
+      "required": false
+    },
+    {
+      "name": "teacher base_url",
+      "status": "PASS",
+      "detail": "https://uni-api.cstcloud.cn/v1",
+      "required": false
+    },
+    {
+      "name": "teacher model",
+      "status": "PASS",
+      "detail": "qwen3.5",
+      "required": false
+    },
+    {
+      "name": "teacher api key (config:api_key)",
+      "status": "PASS",
+      "detail": "present",
+      "required": false
+    },
+    {
+      "name": "baseline budget",
+      "status": "WARN",
+      "detail": "processed_data/sft/meta.json missing; cannot infer controlled max_steps",
+      "required": false
+    }
+  ],
+  "paths": {
+    "tokenizer": "processed_data/tokenizer/tokenizer.pkl",
+    "pretrain_checkpoint": "checkpoints/pretrain_full/best.pt",
+    "alpaca_files": [],
+    "sft_meta": "processed_data/sft/meta.json",
+    "sft_log": "checkpoints/sft_full/sft_log.csv",
+    "sft_config": "configs/sft_full.yaml"
+  },
+  "teacher": {
+    "base_url": "https://uni-api.cstcloud.cn/v1",
+    "model": "qwen3.5",
+    "api_key_present": true,
+    "api_key_source": "config:api_key"
+  },
+  "baseline_budget": null,
+  "failed": 2
+}

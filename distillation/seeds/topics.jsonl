@@ -1,30 +1,30 @@
-{"topic": "a public library membership form"}
-{"topic": "a local weather report"}
-{"topic": "a flight booking confirmation"}
-{"topic": "a restaurant order"}
-{"topic": "a student profile"}
-{"topic": "a product inventory record"}
-{"topic": "a weekly team meeting schedule"}
-{"topic": "a travel itinerary"}
-{"topic": "a movie information card"}
-{"topic": "a bookstore order"}
-{"topic": "a gym membership"}
-{"topic": "a hotel reservation"}
-{"topic": "a museum exhibit"}
-{"topic": "a job application"}
-{"topic": "a hospital appointment"}
-{"topic": "a grocery list"}
-{"topic": "a sports match result"}
-{"topic": "a user account settings page"}
-{"topic": "a camping trip plan"}
-{"topic": "a recipe card"}
-{"topic": "a package delivery notice"}
-{"topic": "a conference talk abstract"}
-{"topic": "a bank transaction record"}
-{"topic": "a car rental agreement"}
-{"topic": "a pet adoption form"}
-{"topic": "a music playlist"}
-{"topic": "a school timetable"}
-{"topic": "a customer support ticket"}
-{"topic": "a photo album description"}
-{"topic": "a software bug report"}
+{"topic": "a public library membership form", "schemas": ["user"]}
+{"topic": "a local weather report", "schemas": ["weather"]}
+{"topic": "a flight booking confirmation", "schemas": ["flight", "event"]}
+{"topic": "a restaurant order", "schemas": ["order", "product"]}
+{"topic": "a student profile", "schemas": ["user"]}
+{"topic": "a product inventory record", "schemas": ["product"]}
+{"topic": "a weekly team meeting schedule", "schemas": ["event"]}
+{"topic": "a travel itinerary", "schemas": ["flight", "event"]}
+{"topic": "a movie information card", "schemas": ["movie"]}
+{"topic": "a bookstore order", "schemas": ["order", "book"]}
+{"topic": "a gym membership", "schemas": ["user", "event"]}
+{"topic": "a hotel reservation", "schemas": ["event", "user"]}
+{"topic": "a museum exhibit", "schemas": ["event", "product"]}
+{"topic": "a job application", "schemas": ["user", "event"]}
+{"topic": "a hospital appointment", "schemas": ["event", "user"]}
+{"topic": "a grocery list", "schemas": ["shopping_list", "product"]}
+{"topic": "a sports match result", "schemas": ["match", "event"]}
+{"topic": "a user account settings page", "schemas": ["user"]}
+{"topic": "a camping trip plan", "schemas": ["event"]}
+{"topic": "a recipe card", "schemas": ["recipe"]}
+{"topic": "a package delivery notice", "schemas": ["delivery", "order"]}
+{"topic": "a conference talk abstract", "schemas": ["event"]}
+{"topic": "a bank transaction record", "schemas": ["transaction", "user"]}
+{"topic": "a car rental agreement", "schemas": ["rental", "event"]}
+{"topic": "a pet adoption form", "schemas": ["pet", "user"]}
+{"topic": "a music playlist", "schemas": ["playlist", "product"]}
+{"topic": "a school timetable", "schemas": ["event", "user"]}
+{"topic": "a customer support ticket", "schemas": ["ticket", "user"]}
+{"topic": "a photo album description", "schemas": ["album", "user"]}
+{"topic": "a software bug report", "schemas": ["bug_report", "ticket"]}

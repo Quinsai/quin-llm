@@ -128,6 +128,89 @@ class DataGeneratorTest(unittest.TestCase):
             self.assertEqual(stats["usage_total"]["completion_tokens"], 11)
             self.assertEqual(stats["usage_total"]["total_tokens"], 19)
 
+    def test_replace_categories_drops_old_category_records(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            out_dir = root / "raw"
+            out_dir.mkdir()
+            tasks_dir = root / "tasks"
+            tasks_dir.mkdir()
+            teacher_yaml = root / "teacher.yaml"
+            teacher_yaml.write_text(
+                "base_url: http://fake.test/v1\n"
+                "model: fake-teacher\n"
+                "api_key: fake-key\n"
+                "concurrency: 1\n",
+                encoding="utf-8",
+            )
+            raw_path = out_dir / "run.jsonl"
+            raw_path.write_text(
+                "\n".join(
+                    json.dumps(record)
+                    for record in (
+                        {
+                            "request_id": "old-reasoning",
+                            "task_id": "reasoning-0",
+                            "category": "reasoning",
+                            "status": "ok",
+                            "content": "{}",
+                        },
+                        {
+                            "request_id": "old-fact",
+                            "task_id": "fact_qa-0",
+                            "category": "fact_qa",
+                            "status": "ok",
+                            "content": "{}",
+                        },
+                    )
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            task = {
+                "task_id": "reasoning-1",
+                "category": "reasoning",
+                "difficulty": "easy",
+                "seed": {"topic": "why ice floats on water", "style": 0},
+                "source": "builtin_reasoning_topics",
+                "prompt_version": "v2",
+            }
+            cfg = DistillGenerationConfig(
+                run_id="run",
+                teacher_config=str(teacher_yaml),
+                out_dir=str(out_dir),
+                tasks_dir=str(tasks_dir),
+            )
+
+            with mock.patch.object(
+                data_generator, "run_task_builder", return_value=tasks_dir / "run.jsonl"
+            ), mock.patch.object(
+                data_generator, "load_tasks", return_value=[task]
+            ), mock.patch.object(
+                data_generator, "TeacherClient", FakeTeacherClient
+            ):
+                run_generation(
+                    cfg,
+                    categories=["reasoning"],
+                    replace_categories=True,
+                )
+
+            rows = [
+                json.loads(line)
+                for line in raw_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            request_ids = {row["request_id"] for row in rows}
+            self.assertNotIn("old-reasoning", request_ids)
+            self.assertIn("old-fact", request_ids)
+            self.assertTrue(
+                any(
+                    row["category"] == "reasoning"
+                    and row["task_id"] == "reasoning-1"
+                    for row in rows
+                )
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
